@@ -145,12 +145,10 @@ try {
         try {
             db = firebase.database();
         } catch (e1) {
-            // Fallback for Asia-Southeast1 region
             firebaseConfig.databaseURL = "https://borrow-systems-9-default-rtdb.asia-southeast1.firebasedatabase.app";
             firebase.initializeApp(firebaseConfig, "asia-app");
             db = firebase.app("asia-app").database();
         }
-        console.log("🟢 Firebase Realtime Database Initialized Successfully!");
     }
 } catch (err) {
     console.error("🔴 Firebase initialization error:", err);
@@ -172,8 +170,24 @@ let timeSortDirection = 'asc';
 document.addEventListener('DOMContentLoaded', () => {
     initApp();
 
-    // Listen to real-time updates from Firebase Database
+    // Listen to Firebase Connection Status
     if (db) {
+        db.ref('.info/connected').on('value', (snap) => {
+            const badge = document.getElementById('firebase-status-badge');
+            if (snap.val() === true) {
+                if (badge) {
+                    badge.className = 'firebase-badge connected';
+                    badge.innerHTML = '<i class="fa-solid fa-cloud-check"></i> <span>ออนไลน์ (Firebase)</span>';
+                }
+            } else {
+                if (badge) {
+                    badge.className = 'firebase-badge pending';
+                    badge.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> <span>กำลังเชื่อมต่อ...</span>';
+                }
+            }
+        });
+
+        // Listen to real-time updates from Firebase Database
         db.ref('borrow_records').on('value', (snapshot) => {
             const data = snapshot.val();
             if (data && Array.isArray(data)) {
@@ -181,6 +195,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 localStorage.setItem('surgical_borrow_records_v9', JSON.stringify(borrowRecords));
                 renderBorrowTable();
                 updateStatistics();
+            }
+        }, (err) => {
+            console.error("Firebase records read error:", err);
+            const badge = document.getElementById('firebase-status-badge');
+            if (badge) {
+                badge.className = 'firebase-badge error';
+                badge.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> <span>ติดสิทธิ์ Firebase</span>';
             }
         });
 
@@ -191,6 +212,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 localStorage.setItem('surgical_equipment_items_v9', JSON.stringify(equipmentList));
             }
         });
+    } else {
+        const badge = document.getElementById('firebase-status-badge');
+        if (badge) {
+            badge.className = 'firebase-badge error';
+            badge.innerHTML = '<i class="fa-solid fa-plug-circle-xmark"></i> <span>ไม่ได้เชื่อม Firebase</span>';
+        }
     }
 
     // Listen to real-time submission from status.html on same browser/device

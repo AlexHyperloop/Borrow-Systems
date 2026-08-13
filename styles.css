@@ -26,7 +26,32 @@
     --primary-light: #e0f2fe;     /* Sky 100 */
     --primary-gradient: linear-gradient(135deg, #0284c7 0%, #0d9488 100%);
     
-    --emerald: #10b981;           /* Ready / Returned Status */
+    --emerald: #10b981;           /* Firebase Connection Status Badge */
+.firebase-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.78rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+.firebase-badge.connected {
+    background-color: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+.firebase-badge.error {
+    background-color: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+.firebase-badge.pending {
+    background-color: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
     --emerald-light: #d1fae5;
     --amber: #d97706;             /* Preparing / Warning Status */
     --amber-light: #fef3c7;
