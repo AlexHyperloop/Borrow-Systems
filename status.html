@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ติดตามสถานะ & เบิกเครื่องมือผ่าตัด | Surgical Equipment Tracking & Requisition</title>
+    <!-- Google Fonts: Prompt & Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="light-mode mobile-friendly-body">
+    <!-- Top Mobile-Friendly Header -->
+    <header class="app-header">
+        <div class="header-container">
+            <div class="brand-logo">
+                <div class="logo-icon">
+                    <i class="fa-solid fa-notes-medical"></i>
+                </div>
+                <div class="brand-text">
+                    <h1>ติดตามสถานะ & เบิกเครื่องมือผ่าตัด</h1>
+                    <p class="subtitle">Surgical Equipment Tracking & Requisition</p>
+                </div>
+            </div>
+
+            <div class="header-actions">
+                <button class="theme-toggle-btn" onclick="toggleTheme()" title="เปลี่ยนธีม">
+                    <i class="fa-solid fa-moon" id="theme-icon"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="main-content">
+        <div class="simple-status-container">
+            
+            <!-- Prominent Call-to-Action Card for Requisition Form -->
+            <div class="create-requisition-banner">
+                <div class="banner-text">
+                    <h3><i class="fa-solid fa-paper-plane"></i> ต้องการยื่นคำขอเบิกเครื่องมือผ่าตัดใหม่?</h3>
+                    <p>กดปุ่มด้านล่างเพื่อเลือกห้องผ่าตัดและระบุอุปกรณ์ผ่าตัดที่ต้องการเบิกได้ทันที</p>
+                </div>
+                <button class="btn-primary btn-lg action-glow-btn" onclick="openBorrowFormModal()">
+                    <i class="fa-solid fa-circle-plus"></i> เขียนแบบฟอร์มเบิกเครื่องมือผ่าตัด
+                </button>
+            </div>
+
+            <!-- Header Section for Status Tracking -->
+            <div class="status-header-title">
+                <i class="fa-solid fa-list-check"></i>
+                <h2>สถานะการจัดเตรียมเครื่องมือผ่าตัด (เรียงตามคิวส่งเบิก)</h2>
+            </div>
+
+            <!-- Filter & Search Controls (OR Room, Date Picker, Search) -->
+            <div class="simple-status-filter-card">
+                <div class="filter-group">
+                    <label for="status-or-filter"><i class="fa-solid fa-door-open"></i> ห้องผ่าตัด:</label>
+                    <select id="status-or-filter" class="styled-select" onchange="renderStatusTrackerCards()">
+                        <option value="">ทุกห้องผ่าตัด (OR 1 - 20)</option>
+                        <!-- JS Populated OR 1 - OR 20 -->
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label for="status-date-filter"><i class="fa-solid fa-calendar-days"></i> วันที่ยื่นเบิก/ใช้งาน:</label>
+                    <input type="date" id="status-date-filter" class="styled-input date-picker-input" onchange="renderStatusTrackerCards()">
+                </div>
+
+                <div class="filter-group flex-1">
+                    <label for="status-search-input"><i class="fa-solid fa-magnifying-glass"></i> ค้นหาชื่อผู้เบิก:</label>
+                    <input type="text" id="status-search-input" placeholder="พิมพ์ชื่อผู้เบิก..." class="styled-input" oninput="renderStatusTrackerCards()">
+                </div>
+            </div>
+
+            <!-- High-Readability Status Table -->
+            <div class="table-card">
+                <div class="table-responsive">
+                    <table class="data-table simple-status-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 130px;">ห้องผ่าตัด</th>
+                                <th>ชื่อ-นามสกุล ผู้เบิก / เวลาที่ยื่นส่งเบิก</th>
+                                <th style="width: 240px; text-align: center;">สถานะการจัดเตรียม</th>
+                            </tr>
+                        </thead>
+                        <tbody id="simple-status-tbody">
+                            <!-- Populated dynamically via JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Empty State -->
+                <div id="simple-status-empty" class="empty-state" style="display: none;">
+                    <div class="empty-icon"><i class="fa-solid fa-box-open"></i></div>
+                    <h3>ไม่พบรายการเบิกตามเงื่อนไขหรือวันที่เลือก</h3>
+                    <p>หากเพิ่งยื่นคำขอ ให้ลองเลือกวันที่ หรือกดปุ่มเขียนแบบฟอร์มเบิกด้านบน</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal Form: แบบฟอร์มบันทึกการเบิกเครื่องมือผ่าตัด (เปิดเมื่อกดปุ่มยื่นคำขอ) -->
+    <div class="modal-backdrop" id="borrow-form-modal" style="display: none;">
+        <div class="modal-card modal-lg">
+            <div class="modal-header">
+                <div class="modal-title">
+                    <i class="fa-solid fa-pen-to-square"></i>
+                    <h3>แบบฟอร์มบันทึกการเบิกเครื่องมือผ่าตัด</h3>
+                </div>
+                <button class="modal-close-btn" onclick="closeBorrowFormModal()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <form id="borrow-form" onsubmit="handleFormSubmit(event)">
+                    <!-- Section 1: ข้อมูลผู้เบิก ห้องผ่าตัด และกำหนดวันที่ -->
+                    <div class="form-section">
+                        <h3 class="section-title"><i class="fa-solid fa-user-doctor"></i> 1. ข้อมูลผู้เบิก ห้องผ่าตัด และกำหนดวันที่</h3>
+                        
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="borrower-name" class="required-label">ชื่อ-นามสกุล ผู้เบิก</label>
+                                <div class="input-with-icon">
+                                    <i class="fa-solid fa-user"></i>
+                                    <input type="text" id="borrower-name" placeholder="เช่น นพ.สมชาย ใจดี หรือ พย.วิภา สุขสรรค์" required>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="or-room-select" class="required-label">เบอร์ห้องผ่าตัด (OR Room)</label>
+                                <div class="input-with-icon">
+                                    <i class="fa-solid fa-door-open"></i>
+                                    <select id="or-room-select" required class="styled-select">
+                                        <option value="" disabled selected>-- เลือกห้องผ่าตัด (OR 1 - OR 20) --</option>
+                                        <!-- JS Populated OR 1 to OR 20 -->
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- 1. วันที่ใช้อุปกรณ์ -->
+                            <div class="form-group">
+                                <label for="usage-date" class="required-label">วันที่ใช้อุปกรณ์</label>
+                                <div class="input-with-icon">
+                                    <i class="fa-solid fa-calendar-check"></i>
+                                    <input type="date" id="usage-date" required class="styled-input">
+                                </div>
+                            </div>
+
+                            <!-- 2. กำหนดวันที่ส่งคืนอุปกรณ์ -->
+                            <div class="form-group">
+                                <label for="expected-return-date" class="required-label">กำหนดวันที่คืนอุปกรณ์</label>
+                                <div class="input-with-icon">
+                                    <i class="fa-solid fa-calendar-rotate"></i>
+                                    <input type="date" id="expected-return-date" required class="styled-input">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="margin-top:0.85rem;" class="field-hint">
+                            <i class="fa-solid fa-circle-info"></i> ระบบจะบันทึกวันและเวลาจริง ณ ตอนกดส่งแบบฟอร์มให้อัตโนมัติ เพื่อจัดลำดับคิวให้พนักงานคลังจัดของ
+                        </div>
+                    </div>
+
+                    <!-- Section 2: เลือกรายการเครื่องมือผ่าตัด แยกตามหมวดหมู่ -->
+                    <div class="form-section">
+                        <div class="section-title-wrapper">
+                            <h3 class="section-title"><i class="fa-solid fa-scissors"></i> 2. เลือกรายการเครื่องมือผ่าตัด (ระบุจำนวนชิ้น)</h3>
+                            <div class="select-all-actions">
+                                <button type="button" class="btn-link" onclick="clearAllSelectedInstruments()">ล้างการเลือกทั้งหมด</button>
+                            </div>
+                        </div>
+
+                        <p class="section-desc">ติ๊กเลือกเครื่องมือและปรับจำนวนชิ้น <code>[-] [1] [+]</code> ที่ต้องการเบิก:</p>
+
+                        <!-- Category Filter Navigation Tabs in Form -->
+                        <div class="category-nav-bar" id="category-nav-bar">
+                            <button type="button" class="cat-nav-btn active" data-cat="all" onclick="switchFormCategoryTab('all')">
+                                <i class="fa-solid fa-border-all"></i> ทั้งหมด
+                            </button>
+                            <button type="button" class="cat-nav-btn" data-cat="อุปกรณ์ทั่วไป" onclick="switchFormCategoryTab('อุปกรณ์ทั่วไป')">
+                                <i class="fa-solid fa-scissors"></i> อุปกรณ์ทั่วไป
+                            </button>
+                            <button type="button" class="cat-nav-btn" data-cat="Set เครื่องมือ" onclick="switchFormCategoryTab('Set เครื่องมือ')">
+                                <i class="fa-solid fa-briefcase-medical"></i> Set เครื่องมือ
+                            </button>
+                            <button type="button" class="cat-nav-btn" data-cat="Set เครื่องผ้า" onclick="switchFormCategoryTab('Set เครื่องผ้า')">
+                                <i class="fa-solid fa-shirt"></i> Set เครื่องผ้า
+                            </button>
+                            <button type="button" class="cat-nav-btn" data-cat="ตู้ General" onclick="switchFormCategoryTab('ตู้ General')">
+                                <i class="fa-solid fa-boxes-stacked"></i> ตู้ General
+                            </button>
+                            <button type="button" class="cat-nav-btn" data-cat="ตู้ Plastic" onclick="switchFormCategoryTab('ตู้ Plastic')">
+                                <i class="fa-solid fa-box-tissue"></i> ตู้ Plastic
+                            </button>
+                            <button type="button" class="cat-nav-btn" data-cat="ตู้ Ob-gyn" onclick="switchFormCategoryTab('ตู้ Ob-gyn')">
+                                <i class="fa-solid fa-hospital-user"></i> ตู้ Ob-gyn
+                            </button>
+                        </div>
+
+                        <!-- Equipment Quick Search inside form -->
+                        <div class="form-equipment-search">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                            <input type="text" id="form-eq-search" placeholder="ค้นหาชื่ออุปกรณ์ในแบบฟอร์ม..." oninput="renderFormEquipmentChecklist()">
+                        </div>
+
+                        <!-- Equipment Grid Categories Container -->
+                        <div class="equipment-categories-wrapper" id="equipment-checklist-container">
+                            <!-- Populated dynamically by category from JS -->
+                        </div>
+                    </div>
+
+                    <!-- Section 3: หมายเหตุเพิ่มเติม -->
+                    <div class="form-section">
+                        <h3 class="section-title"><i class="fa-solid fa-comment-medical"></i> 3. หมายเหตุเพิ่มเติม (ถ้ามี)</h3>
+                        <div class="form-group">
+                            <textarea id="borrow-notes" rows="3" placeholder="ระบุวัตถุประสงค์ คำขอพิเศษ หรือรายละเอียดเพิ่มเติม..."></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Selected Items Summary Bar -->
+                    <div class="selected-items-floating-bar" id="selected-summary-bar">
+                        <div class="summary-count-info">
+                            <i class="fa-solid fa-basket-shopping"></i>
+                            <span>เลือกแล้ว: <strong id="selected-items-count">0</strong> รายการ (<strong id="selected-total-qty">0</strong> ชิ้น)</span>
+                        </div>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <div class="modal-footer justify-between">
+                        <button type="button" class="btn-secondary" onclick="closeBorrowFormModal()">ยกเลิก</button>
+                        <button type="submit" class="btn-primary btn-lg">
+                            <i class="fa-solid fa-paper-plane"></i> ส่งคำขอเบิกอุปกรณ์ไปยังห้องจัดเตรียม
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating Action Button for Mobile -->
+    <button class="mobile-floating-fab" onclick="openBorrowFormModal()" title="เขียนแบบฟอร์มเบิกใหม่">
+        <i class="fa-solid fa-plus"></i>
+        <span>เบิกอุปกรณ์</span>
+    </button>
+
+    <!-- Notification Toast Container -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Dedicated Script for Borrower System -->
+    <script src="status.js"></script>
+</body>
+</html>
