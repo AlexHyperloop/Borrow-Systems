@@ -66,18 +66,62 @@ const getFormattedTime = () => {
 };
 
 // --------------------------------------------------------------------------
-// 2. Global State Variables
+// 2. Global State Variables & Firebase Initialization
 // --------------------------------------------------------------------------
+const firebaseConfig = {
+  apiKey: "AIzaSyDVxJxGGqMLgVgcjPSQ7LxZDJQDTJPPOCU",
+  authDomain: "borrow-systems-9.firebaseapp.com",
+  databaseURL: "https://borrow-systems-9-default-rtdb.firebaseio.com",
+  projectId: "borrow-systems-9",
+  storageBucket: "borrow-systems-9.firebasestorage.app",
+  messagingSenderId: "537901451536",
+  appId: "1:537901451536:web:4871a796e7548e8405fd95",
+  measurementId: "G-BL72XTYYR2"
+};
+
+let db = null;
+try {
+    if (typeof firebase !== 'undefined') {
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        db = firebase.database();
+    }
+} catch (err) {
+    console.warn("Firebase initialization skipped or running offline:", err);
+}
+
 let equipmentList = [];
 let borrowRecords = [];
 let currentFormCategoryTab = 'all';
 let selectedEquipmentState = {};
 
 // --------------------------------------------------------------------------
-// 3. Initialization & Real-time Synchronization
+// 3. Initialization & Real-time Synchronization (Firebase + LocalStorage)
 // --------------------------------------------------------------------------
 document.addEventListener('DOMContentLoaded', () => {
     initApp();
+
+    // Listen to real-time updates from Firebase Database
+    if (db) {
+        db.ref('borrow_records').on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data && Array.isArray(data)) {
+                borrowRecords = data;
+                localStorage.setItem('surgical_borrow_records_v9', JSON.stringify(borrowRecords));
+                renderStatusTrackerCards();
+            }
+        });
+
+        db.ref('equipment_items').on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data && Array.isArray(data)) {
+                equipmentList = data;
+                localStorage.setItem('surgical_equipment_items_v9', JSON.stringify(equipmentList));
+                renderFormEquipmentChecklist();
+            }
+        });
+    }
 
     // Listen to LocalStorage updates from Prep Room (index.html)
     window.addEventListener('storage', (e) => {
@@ -115,6 +159,9 @@ function loadStateFromStorage() {
 
 function saveRecordsToStorage() {
     localStorage.setItem('surgical_borrow_records_v9', JSON.stringify(borrowRecords));
+    if (db) {
+        db.ref('borrow_records').set(borrowRecords).catch(err => console.warn("Firebase Records Sync Error:", err));
+    }
 }
 
 function setupORRoomDropdowns() {
