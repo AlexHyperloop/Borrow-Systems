@@ -85,10 +85,18 @@ try {
         if (!firebase.apps.length) {
             firebase.initializeApp(firebaseConfig);
         }
-        db = firebase.database();
+        try {
+            db = firebase.database();
+        } catch (e1) {
+            // Fallback for Asia-Southeast1 region
+            firebaseConfig.databaseURL = "https://borrow-systems-9-default-rtdb.asia-southeast1.firebasedatabase.app";
+            firebase.initializeApp(firebaseConfig, "asia-app");
+            db = firebase.app("asia-app").database();
+        }
+        console.log("🟢 Firebase Realtime Database Initialized Successfully!");
     }
 } catch (err) {
-    console.warn("Firebase initialization skipped or running offline:", err);
+    console.error("🔴 Firebase initialization error:", err);
 }
 
 let equipmentList = [];
