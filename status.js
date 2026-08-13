@@ -71,7 +71,7 @@ const getFormattedTime = () => {
 const firebaseConfig = {
   apiKey: "AIzaSyDVxJxGGqMLgVgcjPSQ7LxZDJQDTJPPOCU",
   authDomain: "borrow-systems-9.firebaseapp.com",
-  databaseURL: "https://borrow-systems-9-default-rtdb.firebaseio.com",
+  databaseURL: "https://borrow-systems-9-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "borrow-systems-9",
   storageBucket: "borrow-systems-9.firebasestorage.app",
   messagingSenderId: "537901451536",
@@ -85,13 +85,8 @@ try {
         if (!firebase.apps.length) {
             firebase.initializeApp(firebaseConfig);
         }
-        try {
-            db = firebase.database();
-        } catch (e1) {
-            firebaseConfig.databaseURL = "https://borrow-systems-9-default-rtdb.asia-southeast1.firebasedatabase.app";
-            firebase.initializeApp(firebaseConfig, "asia-app");
-            db = firebase.app("asia-app").database();
-        }
+        db = firebase.database();
+        console.log("🟢 Firebase Realtime Database Initialized Successfully!");
     }
 } catch (err) {
     console.error("🔴 Firebase initialization error:", err);
