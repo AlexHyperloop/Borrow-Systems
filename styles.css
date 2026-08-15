@@ -249,19 +249,32 @@ body {
 }
 
 .action-glow-btn {
-    background-color: #ffffff !important;
-    color: var(--primary) !important;
+    background: #ffffff !important;
+    background-image: none !important;
+    color: #0284c7 !important;
     font-weight: 700 !important;
-    border: none;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2) !important;
+    border: none !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25) !important;
     font-size: 1.05rem !important;
     padding: 0.85rem 1.75rem !important;
     border-radius: var(--radius-md) !important;
 }
 
+.action-glow-btn i,
+.action-glow-btn span {
+    color: #0284c7 !important;
+}
+
 .action-glow-btn:hover {
+    background: #f0f9ff !important;
+    color: #0369a1 !important;
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3) !important;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35) !important;
+}
+
+.action-glow-btn:hover i,
+.action-glow-btn:hover span {
+    color: #0369a1 !important;
 }
 
 /* Mobile Floating Action Button (FAB) */

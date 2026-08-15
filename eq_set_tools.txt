@@ -1,0 +1,7 @@
+﻿    { id: 'eq-20', name: 'Set Major Surgery (เซ็ตผ่าตัดใหญ่)', category: 'Set เครื่องมือ', active: true },
+    { id: 'eq-21', name: 'Set Minor Surgery (เซ็ตผ่าตัดเล็ก)', category: 'Set เครื่องมือ', active: true },
+    { id: 'eq-22', name: 'Set Laparoscopy Instrument (เซ็ตกล้องส่องผ่าตัด)', category: 'Set เครื่องมือ', active: true },
+    { id: 'eq-23', name: 'Set Orthopedic Basic', category: 'Set เครื่องมือ', active: true },
+    { id: 'eq-24', name: 'Set Appendectomy (เซ็ตไส้ติ่ง)', category: 'Set เครื่องมือ', active: true },
+            { name: 'Set Major Surgery (เซ็ตผ่าตัดใหญ่)', qty: 1, category: 'Set เครื่องมือ' },
+            { name: 'Set Laparoscopy Instrument (เซ็ตกล้องส่องผ่าตัด)', qty: 1, category: 'Set เครื่องมือ' },
