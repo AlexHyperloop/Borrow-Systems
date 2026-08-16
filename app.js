@@ -737,12 +737,15 @@ function loadStateFromStorage() {
 
 function saveEquipmentToStorage() {
     localStorage.setItem('surgical_equipment_items_v10', JSON.stringify(equipmentList));
+    if (db) {
+        db.ref('equipment_items').set(equipmentList).catch(err => console.warn("Firebase Equipment Sync Error:", err));
+    }
 }
 
 function saveRecordsToStorage() {
     localStorage.setItem('surgical_borrow_records_v10', JSON.stringify(borrowRecords));
     if (db) {
-        db.ref('borrowRecords').set(borrowRecords);
+        db.ref('borrow_records').set(borrowRecords).catch(err => console.warn("Firebase Records Sync Error:", err));
     }
 }
 
