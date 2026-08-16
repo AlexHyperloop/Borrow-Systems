@@ -1216,6 +1216,42 @@ body {
     font-weight: 400;
 }
 
+.m-status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.85rem;
+    border-radius: 99px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.m-status-pill.pending {
+    background-color: var(--amber-light);
+    color: var(--amber);
+    border: 1px solid var(--amber);
+}
+
+.m-status-pill.ready {
+    background-color: var(--emerald-light);
+    color: var(--emerald);
+    border: 1.5px solid var(--emerald);
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
+}
+
+.m-status-pill.borrowed {
+    background-color: var(--primary-light);
+    color: var(--primary);
+    border: 1px solid var(--primary);
+}
+
+.m-status-pill.returned {
+    background-color: var(--bg-main);
+    color: var(--text-muted);
+    border: 1px solid var(--border-color);
+}
+
 /* --------------------------------------------------------------------------
    7. Modals & Printable Paper Checklist Document
    -------------------------------------------------------------------------- */

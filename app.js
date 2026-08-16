@@ -1,14 +1,36 @@
-﻿/**
+/**
  * ==========================================================================
- * à¸£à¸°à¸šà¸šà¹€à¸šà¸´à¸à¹€à¸„à¸£à¸·à¹ˆà¸­à¸‡à¸¡à¸·à¸­à¸œà¹ˆà¸²à¸•à¸±à¸” - à¸à¹ˆà¸²à¸¢à¸«à¹‰à¸­à¸‡à¸ˆà¸±à¸”à¹€à¸•à¸£à¸µà¸¢à¸¡à¸­à¸¸à¸›à¸à¸£à¸“à¹Œ (Prep Room Dashboard System)
- * Dedicated Script for index.html (Computer System for Prep Staff)
+ * ระบบยืม-คืนเครื่องมือผ่าตัด - ฝ่ายห้องผ่าตัด (OR Mobile Requisition & Status Tracker)
+ * Dedicated Script for status.html (Mobile-Friendly Form & Tracker)
  * ==========================================================================
  */
 
+// Firebase Configuration (Realtime Database - Singapore Region)
+const firebaseConfig = {
+    apiKey: "AIzaSyDVxJxGGqMLgVgcjPSQ7LxZDJQDTJPPOCU",
+    authDomain: "borrow-systems-9.firebaseapp.com",
+    databaseURL: "https://borrow-systems-9-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "borrow-systems-9",
+    storageBucket: "borrow-systems-9.firebasestorage.app",
+    messagingSenderId: "537901451536",
+    appId: "1:537901451536:web:4871a796e7548e8405fd95",
+    measurementId: "G-BL72XTYYR2"
+};
+
+// Initialize Firebase App & Database if SDK loaded
+let db = null;
+if (typeof firebase !== 'undefined') {
+    if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+    }
+    db = firebase.database();
+}
+
 // --------------------------------------------------------------------------
-// 1. Initial Equipment Datasets (6 Categories with Sample Instruments)
+// 1. Initial Datasets (Same Schema & Key for Real-time LocalStorage Sync)
 // --------------------------------------------------------------------------
 const INITIAL_EQUIPMENT_LIST = [
+    // Set Package (45 รายการหัตถการผ่าตัด)
     { id: 'eq-sp-1', name: 'C/S', category: 'Set Package', active: true },
     { id: 'eq-sp-2', name: 'Complete surgical staging (CSS)', category: 'Set Package', active: true },
     { id: 'eq-sp-3', name: 'Laparoscope สูติ-นรีเวช', category: 'Set Package', active: true },
@@ -54,639 +76,538 @@ const INITIAL_EQUIPMENT_LIST = [
     { id: 'eq-sp-43', name: 'Tracheostomy', category: 'Set Package', active: true },
     { id: 'eq-sp-44', name: 'Myringotomy', category: 'Set Package', active: true },
     { id: 'eq-sp-45', name: 'Mandibulectomy', category: 'Set Package', active: true },
-    // à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸› (à¸ˆà¸²à¸ Google Sheets + à¹€à¸”à¸´à¸¡)
-    { id: 'eq-gen-1', name: 'à¸–à¸¸à¸‡à¸¡à¸·à¸­à¹€à¸šà¸­à¸£à¹Œ 6', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-2', name: 'à¸–à¸¸à¸‡à¸¡à¸·à¸­à¹€à¸šà¸­à¸£à¹Œ 6 1/2', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-3', name: 'à¸–à¸¸à¸‡à¸¡à¸·à¸­à¹€à¸šà¸­à¸£à¹Œ 7', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-4', name: 'à¸–à¸¸à¸‡à¸¡à¸·à¸­à¹€à¸šà¸­à¸£à¹Œ 7 1/2', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-5', name: 'à¸–à¸¸à¸‡à¸¡à¸·à¸­à¹€à¸šà¸­à¸£à¹Œ 8', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-6', name: 'à¸–à¸¸à¸‡à¸¡à¸·à¸­à¹€à¸šà¸­à¸£à¹Œ 8 1/2', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-7', name: 'Nss 0.9% 100 ml.', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-8', name: 'à¸ªà¸µ Sterile (Medical Dye)', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-9', name: 'à¹ƒà¸šà¸¡à¸µà¸” Dermatome', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-10', name: 'à¹ƒà¸šà¸¡à¸µà¸” graft', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-11', name: 'Foley\'s cath 2 à¸«à¸²à¸‡ No.6', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-12', name: 'Foley\'s cath 2 à¸«à¸²à¸‡ No.8', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-13', name: 'Foley\'s cath 2 à¸«à¸²à¸‡ No.10', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-14', name: 'Foley\'s cath 2 à¸«à¸²à¸‡ No.12', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-15', name: 'Foley\'s cath 2 à¸«à¸²à¸‡ No.14', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-16', name: 'Foley\'s cath 2 à¸«à¸²à¸‡ No.16', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-17', name: 'Foley\'s cath 2 à¸«à¸²à¸‡ No.18', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-18', name: 'Foley\'s cath 2 à¸«à¸²à¸‡ No.20', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-19', name: 'Foley\'s cath 2 à¸«à¸²à¸‡ No.22', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-20', name: 'Foley\'s cath 2 à¸«à¸²à¸‡ No.24', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-21', name: 'Foley\'s cath 3 à¸«à¸²à¸‡ No.18', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-22', name: 'Foley\'s cath 3 à¸«à¸²à¸‡ No.20', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-23', name: 'Foley\'s cath 3 à¸«à¸²à¸‡ No.22', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-24', name: 'Cath à¹à¸”à¸‡ No.8', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-25', name: 'Cath à¹à¸”à¸‡ No.10', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-26', name: 'Cath à¹à¸”à¸‡ No.12', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-27', name: 'Cath à¹à¸”à¸‡ No.14', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-28', name: 'Cath à¹à¸”à¸‡ No.16', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-29', name: 'Cath à¹à¸”à¸‡ No.18', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-30', name: 'Four wing No.12', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-31', name: 'Four wing No.14', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-32', name: 'Four wing No.16', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-33', name: 'Four wing No.18', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-34', name: 'Four wing No.20', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-35', name: 'Four wing No.22', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-36', name: 'Four wing No.24', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-37', name: 'Four wing No.26', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-38', name: 'Four wing No.28', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-39', name: 'Four wing No.30', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-40', name: 'Silicone cath 2 à¸«à¸²à¸‡ No.14', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-41', name: 'Silicone cath 2 à¸«à¸²à¸‡ No.16', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-42', name: 'Silicone cath 2 à¸«à¸²à¸‡ No.18', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-43', name: 'Feeding tube No.5', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-44', name: 'Feeding tube No.6', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-45', name: 'Feeding tube No.8', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-46', name: 'Feeding tube No.10', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-47', name: 'NG. No.12', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-48', name: 'NG. No.14', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-49', name: 'NG. No.16', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-50', name: 'NG. No.18', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-51', name: 'Thoracic cath No.16', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-52', name: 'Thoracic cath No.20', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-53', name: 'Thoracic cath No.24', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-54', name: 'Thoracic cath No.28', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-55', name: 'Thoracic cath No.32', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-56', name: 'Thoracic cath No.36', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-57', name: 'Set I.V.', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-58', name: 'à¸ªà¸²à¸¢ Bipolar à¸ªà¸µà¸Ÿà¹‰à¸²', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-59', name: 'à¸ªà¸²à¸¢ Bipolar Dual à¸ªà¸µà¸™à¹‰à¸³à¸•à¸²à¸¥', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-60', name: 'à¸ªà¸²à¸¢à¸ˆà¸µà¹‰ Foot', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-61', name: 'à¸ªà¸²à¸¢à¸ˆà¸µà¹‰ Hand', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-62', name: 'Merocel', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-63', name: 'Elastic sterile 3"', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-64', name: 'Elastic sterile 4"', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-65', name: 'Elastic sterile 6"', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-66', name: 'Webril sterile 3"', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-67', name: 'Webril sterile 4"', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-68', name: 'Webril sterile 6"', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-69', name: 'Prolene Mesh graft à¹€à¸¥à¹‡à¸', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-70', name: 'Prolene Mesh graft à¹ƒà¸«à¸à¹ˆ', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-71', name: 'Gauze drain 3/4 cm.', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-72', name: 'Gauze drain 1.5 cm.', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-73', name: 'Gauze Heart 3x9', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-74', name: 'Gauze Ortho', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-75', name: 'à¸‚à¸§à¸” Vac Drain 200 ml.', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-76', name: 'à¸‚à¸§à¸” Vac Drain 600 ml.', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-77', name: 'à¹€à¸‚à¹‡à¸¡ Drain No.8', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-78', name: 'à¹€à¸‚à¹‡à¸¡ Drain No.10', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-79', name: 'à¹€à¸‚à¹‡à¸¡ Drain No.12', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-80', name: 'à¸ªà¸²à¸¢ Redivac drain No.8', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-81', name: 'à¸ªà¸²à¸¢ Redivac drain No.10', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-82', name: 'à¸ªà¸²à¸¢ Redivac drain No.12', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-83', name: 'Jackson Pratt No.10', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-84', name: 'Extension Tube', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-85', name: 'Penrose drain 1/2"', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-86', name: 'Penrose drain 3/4"', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-87', name: 'Tube drain à¸à¸¥à¸²à¸‡', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-88', name: 'Tube drain à¹€à¸¥à¹‡à¸', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-89', name: 'Wire Guide (PCNL)', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-90', name: 'à¸Šà¸¸à¸”à¹€à¸‚à¹‡à¸¡à¹€à¸ˆà¸²à¸° (PCNL)', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-91', name: 'PCN No.8', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-92', name: 'PCN No.10', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-93', name: 'DJ. Stent No.4.8', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-94', name: 'DJ. Stent No.6', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-95', name: 'DJ. Stent No.7', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-96', name: 'Fogarty No.2', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-97', name: 'Fogarty No.3', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-98', name: 'Fogarty No.4', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-99', name: 'Fogarty No.5', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-100', name: 'à¸ªà¸²à¸¢ RP No.3', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-101', name: 'à¸ªà¸²à¸¢ RP No.4', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-102', name: 'à¸ªà¸²à¸¢ RP No.5', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-103', name: 'à¸ªà¸²à¸¢ RP No.6', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-104', name: 'Opsite 15x28 cm.', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-105', name: 'Ioban 35x35 cm.', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-106', name: 'Ioban 60x45 cm.', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-107', name: 'Tegaderm à¹€à¸¥à¹‡à¸ (à¹€à¸‚à¸µà¸¢à¸§)', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-108', name: 'Tegaderm à¹€à¸¥à¹‡à¸+Pad (à¹à¸”à¸‡)', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-109', name: 'Tegaderm à¸à¸¥à¸²à¸‡+Pad', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-110', name: 'Leukostrip', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-111', name: 'Spongostan', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-112', name: 'Sofra-tulle', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-113', name: 'Rack à¹€à¸‚à¹‡à¸¡ Neuro', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-114', name: 'Rack à¹€à¸‚à¹‡à¸¡ à¸¨à¸±à¸¥à¸¢à¹Œ', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-115', name: 'Rack à¹€à¸‚à¹‡à¸¡ Uro', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-116', name: 'Rack à¹€à¸‚à¹‡à¸¡ à¸ªà¸¹à¸•à¸´', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-117', name: 'Rack à¹€à¸‚à¹‡à¸¡ à¸•à¸£à¸‡', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-118', name: 'Rack à¹€à¸‚à¹‡à¸¡ à¹€à¸¢à¹‡à¸šà¸‚à¹‰à¸²à¸‡', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-119', name: 'à¹€à¸‚à¹‡à¸¡ Sterile 18 x 1 1/2', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-120', name: 'à¹€à¸‚à¹‡à¸¡ Sterile 21 x 1 1/2', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-121', name: 'à¹€à¸‚à¹‡à¸¡ Sterile 24 x 1/2', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-122', name: 'à¹€à¸‚à¹‡à¸¡ Sterile 25 x 1', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-123', name: 'à¹€à¸‚à¹‡à¸¡ Sterile 25 x 1 1/2', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-124', name: 'à¹€à¸‚à¹‡à¸¡ Sterile 27 x 1', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-125', name: 'à¹€à¸‚à¹‡à¸¡ Sterile 27 x 1/2', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-126', name: 'Raney Clip', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-127', name: 'Cottonoid No. L', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-128', name: 'Cottonoid No. M', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-129', name: 'Transfer bag neuro', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-130', name: 'Feeding tube No.8 neuro', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-131', name: 'Feeding tube No.10 neuro', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-132', name: 'Colostomy bag à¸ž.à¸¨à¸£à¸¸à¸•à¸²', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-133', name: 'à¸–à¸¸à¸‡à¸à¸¥à¹‰à¸­à¸‡', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-134', name: 'Tracheostomy tube No. 6', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-135', name: 'Tracheostomy tube No. 7', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-136', name: 'Tracheostomy tube No. 7.5', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-137', name: 'Tracheostomy tube No. 8', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-138', name: 'Vein stripping', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-139', name: 'Syringe Insulin 1 cc.à¸–à¸­à¸”à¹€à¸‚à¹‡à¸¡', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-140', name: 'Syringe 3 cc.', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-141', name: 'Syringe 5 cc. / 5 cc.à¸¥à¹‡à¸­à¸„', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-142', name: 'Syringe 10 cc. / 10 cc.à¸¥à¹‡à¸­à¸„', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-143', name: 'Syringe 20 cc.', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-144', name: 'Syringe 50 cc.', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-145', name: 'Pads Valleylab (à¸ªà¸µà¸Ÿà¹‰à¸²)', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-146', name: 'Pads à¹€à¸”à¹‡à¸ Valleylab (à¸ªà¸µà¸Ÿà¹‰à¸²)', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-147', name: 'Pads à¹€à¸”à¹‡à¸ Valleylab (à¸ªà¸µà¸™à¹‰à¸³à¹€à¸‡à¸´à¸™)', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-148', name: 'Pads à¹€à¸”à¹‡à¸ à¹„à¸¡à¹ˆà¸¡à¸µà¸ªà¸²à¸¢', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-149', name: 'Pads à¸œà¸¹à¹‰à¹ƒà¸«à¸à¹ˆ à¹„à¸¡à¹ˆà¸¡à¸µà¸ªà¸²à¸¢', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-150', name: 'Pads à¸œà¸¹à¹‰à¹ƒà¸«à¸à¹ˆ à¸¡à¸µà¸ªà¸²à¸¢', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-151', name: 'à¸¥à¸§à¸” No.16', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-152', name: 'à¸¥à¸§à¸” No.18', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-153', name: 'à¸¥à¸§à¸” No.20', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-154', name: 'à¸¥à¸§à¸” No.22', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-155', name: 'à¸¥à¸§à¸” No.23', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-156', name: 'à¸¥à¸§à¸” No.24', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-157', name: 'à¸¥à¸§à¸” No.25', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-158', name: 'à¸¥à¸§à¸” No.26', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-159', name: 'à¸¥à¸§à¸” No.28', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-160', name: 'à¸¥à¸§à¸” No.30', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-161', name: 'Arch bar', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-162', name: 'à¸–à¸¸à¸‡ burr hole', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-163', name: 'Urine bag', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-164', name: 'D.S.', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-165', name: 'Culture', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-166', name: 'Skin Staple', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-167', name: 'à¸•à¸±à¸§ off staple', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-168', name: 'Vascular loop à¹€à¸¥à¹‡à¸-à¹ƒà¸«à¸à¹ˆ', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-169', name: 'Vaseline', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-170', name: 'Vaseline Gauze', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-171', name: 'à¸—à¸µà¹ˆà¸‚à¸¹à¸”à¸ˆà¸µà¹‰', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-172', name: 'à¸›à¸¥à¸­à¸à¸ˆà¸µà¹‰', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-173', name: 'à¹à¸›à¸£à¸‡à¸ªà¸µà¸Ÿà¸±à¸™', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-174', name: 'à¹à¸œà¹ˆà¸™à¸ªà¹„à¸¥à¸”à¹Œ', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-175', name: 'à¹„à¸¡à¹‰à¸ˆà¸´à¹‰à¸¡à¸ªà¸µ', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-176', name: 'à¸‚à¸§à¸” Sterile', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-177', name: 'à¹„à¸¡à¹‰à¸žà¸±à¸™à¸ªà¸³à¸¥à¸µ à¹€à¸¥à¹‡à¸-à¹ƒà¸«à¸à¹ˆ', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-178', name: 'à¸¢à¸²à¸‡à¸§à¸‡', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-179', name: 'à¸¥à¸¹à¸à¸ªà¸¹à¸šà¸¢à¸²à¸‡ C/S', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-180', name: 'à¸ªà¸³à¸¥à¸µà¸¥à¸¹à¸à¹€à¸¥à¹‡à¸', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-181', name: 'à¸ªà¸³à¸¥à¸µà¸¥à¸¹à¸à¹ƒà¸«à¸à¹ˆ', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-182', name: 'à¸«à¸§à¸µ', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-183', name: 'Glass rod', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-184', name: 'UM.', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-185', name: 'à¹ƒà¸šà¸¡à¸µà¸”à¸•à¸² 15 à¸­à¸‡à¸¨à¸²', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-186', name: 'à¹ƒà¸šà¸¡à¸µà¸”à¸•à¸² 2.8', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-187', name: 'à¹ƒà¸šà¸¡à¸µà¸”à¸•à¸² 3.0', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-188', name: 'à¹„à¸¡à¹‰à¸žà¸±à¸™à¸ªà¸³à¸¥à¸µà¸•à¸²', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-189', name: 'à¸–à¸¸à¸‡à¸™à¹‰à¸³à¸•à¸²', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-190', name: 'Eye Pad', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-gen-191', name: 'Eye Shield', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    // Existing 
-    { id: 'eq-1', name: 'Army-Navy', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-2', name: 'Richardson', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-3', name: 'Deaver', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-4', name: 'Senn', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-5', name: 'Malleable retractor', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-6', name: 'Mosquito Forceps', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-7', name: 'Kelly Forceps', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-8', name: 'Crile Forceps', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-9', name: 'Kocher Forceps', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-10', name: 'Needle Holder', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
-    { id: 'eq-11', name: 'Towel Clip', category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›', active: true },
+
+    // อุปกรณ์ทั่วไป (จาก Google Sheets + เดิม)
+    { id: 'eq-gen-1', name: 'ถุงมือเบอร์ 6', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-2', name: 'ถุงมือเบอร์ 6 1/2', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-3', name: 'ถุงมือเบอร์ 7', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-4', name: 'ถุงมือเบอร์ 7 1/2', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-5', name: 'ถุงมือเบอร์ 8', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-6', name: 'ถุงมือเบอร์ 8 1/2', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-7', name: 'Nss 0.9% 100 ml.', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-8', name: 'สี Sterile (Medical Dye)', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-9', name: 'ใบมีด Dermatome', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-10', name: 'ใบมีด graft', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-11', name: 'Foley\'s cath 2 หาง No.6', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-12', name: 'Foley\'s cath 2 หาง No.8', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-13', name: 'Foley\'s cath 2 หาง No.10', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-14', name: 'Foley\'s cath 2 หาง No.12', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-15', name: 'Foley\'s cath 2 หาง No.14', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-16', name: 'Foley\'s cath 2 หาง No.16', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-17', name: 'Foley\'s cath 2 หาง No.18', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-18', name: 'Foley\'s cath 2 หาง No.20', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-19', name: 'Foley\'s cath 2 หาง No.22', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-20', name: 'Foley\'s cath 2 หาง No.24', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-21', name: 'Foley\'s cath 3 หาง No.18', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-22', name: 'Foley\'s cath 3 หาง No.20', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-23', name: 'Foley\'s cath 3 หาง No.22', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-24', name: 'Cath แดง No.8', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-25', name: 'Cath แดง No.10', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-26', name: 'Cath แดง No.12', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-27', name: 'Cath แดง No.14', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-28', name: 'Cath แดง No.16', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-29', name: 'Cath แดง No.18', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-30', name: 'Four wing No.12', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-31', name: 'Four wing No.14', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-32', name: 'Four wing No.16', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-33', name: 'Four wing No.18', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-34', name: 'Four wing No.20', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-35', name: 'Four wing No.22', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-36', name: 'Four wing No.24', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-37', name: 'Four wing No.26', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-38', name: 'Four wing No.28', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-39', name: 'Four wing No.30', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-40', name: 'Silicone cath 2 หาง No.14', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-41', name: 'Silicone cath 2 หาง No.16', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-42', name: 'Silicone cath 2 หาง No.18', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-43', name: 'Feeding tube No.5', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-44', name: 'Feeding tube No.6', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-45', name: 'Feeding tube No.8', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-46', name: 'Feeding tube No.10', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-47', name: 'NG. No.12', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-48', name: 'NG. No.14', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-49', name: 'NG. No.16', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-50', name: 'NG. No.18', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-51', name: 'Thoracic cath No.16', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-52', name: 'Thoracic cath No.20', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-53', name: 'Thoracic cath No.24', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-54', name: 'Thoracic cath No.28', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-55', name: 'Thoracic cath No.32', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-56', name: 'Thoracic cath No.36', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-57', name: 'Set I.V.', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-58', name: 'สาย Bipolar สีฟ้า', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-59', name: 'สาย Bipolar Dual สีน้ำตาล', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-60', name: 'สายจี้ Foot', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-61', name: 'สายจี้ Hand', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-62', name: 'Merocel', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-63', name: 'Elastic sterile 3"', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-64', name: 'Elastic sterile 4"', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-65', name: 'Elastic sterile 6"', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-66', name: 'Webril sterile 3"', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-67', name: 'Webril sterile 4"', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-68', name: 'Webril sterile 6"', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-69', name: 'Prolene Mesh graft เล็ก', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-70', name: 'Prolene Mesh graft ใหญ่', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-71', name: 'Gauze drain 3/4 cm.', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-72', name: 'Gauze drain 1.5 cm.', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-73', name: 'Gauze Heart 3x9', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-74', name: 'Gauze Ortho', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-75', name: 'ขวด Vac Drain 200 ml.', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-76', name: 'ขวด Vac Drain 600 ml.', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-77', name: 'เข็ม Drain No.8', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-78', name: 'เข็ม Drain No.10', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-79', name: 'เข็ม Drain No.12', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-80', name: 'สาย Redivac drain No.8', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-81', name: 'สาย Redivac drain No.10', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-82', name: 'สาย Redivac drain No.12', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-83', name: 'Jackson Pratt No.10', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-84', name: 'Extension Tube', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-85', name: 'Penrose drain 1/2"', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-86', name: 'Penrose drain 3/4"', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-87', name: 'Tube drain กลาง', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-88', name: 'Tube drain เล็ก', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-89', name: 'Wire Guide (PCNL)', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-90', name: 'ชุดเข็มเจาะ (PCNL)', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-91', name: 'PCN No.8', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-92', name: 'PCN No.10', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-93', name: 'DJ. Stent No.4.8', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-94', name: 'DJ. Stent No.6', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-95', name: 'DJ. Stent No.7', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-96', name: 'Fogarty No.2', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-97', name: 'Fogarty No.3', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-98', name: 'Fogarty No.4', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-99', name: 'Fogarty No.5', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-100', name: 'สาย RP No.3', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-101', name: 'สาย RP No.4', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-102', name: 'สาย RP No.5', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-103', name: 'สาย RP No.6', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-104', name: 'Opsite 15x28 cm.', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-105', name: 'Ioban 35x35 cm.', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-106', name: 'Ioban 60x45 cm.', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-107', name: 'Tegaderm เล็ก (เขียว)', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-108', name: 'Tegaderm เล็ก+Pad (แดง)', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-109', name: 'Tegaderm กลาง+Pad', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-110', name: 'Leukostrip', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-111', name: 'Spongostan', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-112', name: 'Sofra-tulle', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-113', name: 'Rack เข็ม Neuro', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-114', name: 'Rack เข็ม ศัลย์', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-115', name: 'Rack เข็ม Uro', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-116', name: 'Rack เข็ม สูติ', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-117', name: 'Rack เข็ม ตรง', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-118', name: 'Rack เข็ม เย็บข้าง', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-119', name: 'เข็ม Sterile 18 x 1 1/2', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-120', name: 'เข็ม Sterile 21 x 1 1/2', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-121', name: 'เข็ม Sterile 24 x 1/2', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-122', name: 'เข็ม Sterile 25 x 1', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-123', name: 'เข็ม Sterile 25 x 1 1/2', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-124', name: 'เข็ม Sterile 27 x 1', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-125', name: 'เข็ม Sterile 27 x 1/2', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-126', name: 'Raney Clip', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-127', name: 'Cottonoid No. L', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-128', name: 'Cottonoid No. M', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-129', name: 'Transfer bag neuro', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-130', name: 'Feeding tube No.8 neuro', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-131', name: 'Feeding tube No.10 neuro', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-132', name: 'Colostomy bag พ.ศรุตา', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-133', name: 'ถุงกล้อง', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-134', name: 'Tracheostomy tube No. 6', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-135', name: 'Tracheostomy tube No. 7', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-136', name: 'Tracheostomy tube No. 7.5', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-137', name: 'Tracheostomy tube No. 8', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-138', name: 'Vein stripping', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-139', name: 'Syringe Insulin 1 cc.ถอดเข็ม', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-140', name: 'Syringe 3 cc.', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-141', name: 'Syringe 5 cc. / 5 cc.ล็อค', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-142', name: 'Syringe 10 cc. / 10 cc.ล็อค', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-143', name: 'Syringe 20 cc.', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-144', name: 'Syringe 50 cc.', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-145', name: 'Pads Valleylab (สีฟ้า)', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-146', name: 'Pads เด็ก Valleylab (สีฟ้า)', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-147', name: 'Pads เด็ก Valleylab (สีน้ำเงิน)', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-148', name: 'Pads เด็ก ไม่มีสาย', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-149', name: 'Pads ผู้ใหญ่ ไม่มีสาย', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-150', name: 'Pads ผู้ใหญ่ มีสาย', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-151', name: 'ลวด No.16', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-152', name: 'ลวด No.18', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-153', name: 'ลวด No.20', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-154', name: 'ลวด No.22', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-155', name: 'ลวด No.23', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-156', name: 'ลวด No.24', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-157', name: 'ลวด No.25', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-158', name: 'ลวด No.26', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-159', name: 'ลวด No.28', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-160', name: 'ลวด No.30', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-161', name: 'Arch bar', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-162', name: 'ถุง burr hole', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-163', name: 'Urine bag', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-164', name: 'D.S.', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-165', name: 'Culture', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-166', name: 'Skin Staple', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-167', name: 'ตัว off staple', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-168', name: 'Vascular loop เล็ก-ใหญ่', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-169', name: 'Vaseline', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-170', name: 'Vaseline Gauze', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-171', name: 'ที่ขูดจี้', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-172', name: 'ปลอกจี้', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-173', name: 'แปรงสีฟัน', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-174', name: 'แผ่นสไลด์', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-175', name: 'ไม้จิ้มสี', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-176', name: 'ขวด Sterile', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-177', name: 'ไม้พันสำลี เล็ก-ใหญ่', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-178', name: 'ยางวง', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-179', name: 'ลูกสูบยาง C/S', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-180', name: 'สำลีลูกเล็ก', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-181', name: 'สำลีลูกใหญ่', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-182', name: 'หวี', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-183', name: 'Glass rod', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-184', name: 'UM.', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-185', name: 'ใบมีดตา 15 องศา', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-186', name: 'ใบมีดตา 2.8', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-187', name: 'ใบมีดตา 3.0', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-188', name: 'ไม้พันสำลีตา', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-189', name: 'ถุงน้ำตา', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-190', name: 'Eye Pad', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-gen-191', name: 'Eye Shield', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-1', name: 'Army-Navy', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-2', name: 'Richardson', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-3', name: 'Deaver', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-4', name: 'Senn', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-5', name: 'Malleable retractor', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-6', name: 'Mosquito Forceps', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-7', name: 'Kelly Forceps', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-8', name: 'Crile Forceps', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-9', name: 'Kocher Forceps', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-10', name: 'Needle Holder', category: 'อุปกรณ์ทั่วไป', active: true },
+    { id: 'eq-11', name: 'Towel Clip', category: 'อุปกรณ์ทั่วไป', active: true },
+
+    // Set เครื่องมือ
     { id: 'eq-20', name: 'Set Major Surgery (เซ็ตผ่าตัดใหญ่)', category: 'Set เครื่องมือ', active: true },
     { id: 'eq-21', name: 'Set Minor Surgery (เซ็ตผ่าตัดเล็ก)', category: 'Set เครื่องมือ', active: true },
     { id: 'eq-22', name: 'Set Laparoscopy Instrument (เซ็ตกล้องส่องผ่าตัด)', category: 'Set เครื่องมือ', active: true },
     { id: 'eq-23', name: 'Set Orthopedic Basic', category: 'Set เครื่องมือ', active: true },
     { id: 'eq-24', name: 'Set Appendectomy (เซ็ตไส้ติ่ง)', category: 'Set เครื่องมือ', active: true },
-            { name: 'Set Major Surgery (เซ็ตผ่าตัดใหญ่)', qty: 1, category: 'Set เครื่องมือ' },
-            { name: 'Set Laparoscopy Instrument (เซ็ตกล้องส่องผ่าตัด)', qty: 1, category: 'Set เครื่องมือ' },
+
+    // Set เครื่องผ้า
     { id: 'eq-30', name: 'Set ผ้าผ่าตัดทั่วไป (General Drape Set)', category: 'Set เครื่องผ้า', active: true },
     { id: 'eq-31', name: 'Set ผ้าส่องกล้อง (Laparoscopy Drape)', category: 'Set เครื่องผ้า', active: true },
     { id: 'eq-32', name: 'Set ผ้ากระดูกและข้อ (Ortho Drape)', category: 'Set เครื่องผ้า', active: true },
     { id: 'eq-33', name: 'เสื้อกาวน์ผ่าตัด (Surgical Gown)', category: 'Set เครื่องผ้า', active: true },
     { id: 'eq-34', name: 'ผ้าคลุมเตียงผ่าตัด (Drape Sheet)', category: 'Set เครื่องผ้า', active: true },
-            { name: 'Set ผ้าผ่าตัดทั่วไป (General Drape Set)', qty: 1, category: 'Set เครื่องผ้า' }
-    // à¸•à¸¹à¹‰ Ortho
-    { id: 'eq-ortho-1', name: 'Acetabulum Clamp à¹€à¸¥à¹‡à¸ / à¹ƒà¸«à¸à¹ˆ', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-2', name: 'Aiming Device / Bone Biopsy', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-3', name: 'Bending Iron (à¸”à¸±à¸”plateà¸¡à¸·à¸­)', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-4', name: 'Bone Clamp à¹€à¸¥à¹‡à¸/ à¸à¸¥à¸²à¸‡ / à¹ƒà¸«à¸à¹ˆ', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-5', name: 'Bone Cutter à¹€à¸¥à¹‡à¸ / à¹ƒà¸«à¸à¹ˆ', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-6', name: 'Bone Hook / Bone Skid', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-7', name: 'Bone Rongeur Beyer / Stille', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-8', name: 'Bone Rongeur Ruskin / angle stille', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-9', name: 'Broken screw (à¸Šà¸¸à¸”)', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-10', name: 'Cartilage set', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-11', name: 'Cervical dissector (Bone graft 7 à¸Šà¸´à¹‰à¸™)', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-12', name: 'Cervical Spreader', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-13', name: 'Cloward (14à¸Šà¸´à¹‰à¸™)', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-14', name: 'Cobb 9 à¸™à¸´à¹‰à¸§ à¸”à¹‰à¸²à¸¡à¹„à¸¡à¹‰ / à¸”à¹‰à¸²à¸¡à¹€à¸«à¸¥à¹‡à¸', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-15', name: 'Cobb à¸¢à¸²à¸§ 11à¸™à¸´à¹‰à¸§ 10 / 18 mm.', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-16', name: 'Curette (à¸Ÿà¸±à¸™à¸«à¸™à¸¹ 13mm/8.5mm)', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-17', name: 'Curette No.', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-18', name: 'Curette spine 3 à¸Šà¸´à¹‰à¸™ à¸•à¸£à¸‡ /à¹‚à¸„à¹‰à¸‡', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-19', name: 'Curette à¸•à¸£à¸‡ no. 3 (à¸ž.à¸ªà¸¸à¸§à¸´à¹‚à¸Šà¸•à¸´)', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-20', name: 'Depth Gauge for 3.5 / 4.5', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-21', name: 'Drill bit 1.1/1.5 /2.0 /2.5 /2.7', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-22', name: 'Drill bit 3.2/3.5/4.5/6.0', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-23', name: 'Drill sleeve 2.5/3.5', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-24', name: 'Freer (Penfield) à¸ªà¸±à¹‰à¸™ /à¸¢à¸²à¸§', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-25', name: 'Freer + à¸”à¹‰à¸²à¸¡à¸¡à¸µà¸” No.7', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-26', name: 'Hibbs retractor à¹€à¸¥à¹‡à¸ / à¹ƒà¸«à¸à¹ˆ', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-27', name: 'Hohmann Ret gen / à¹‚à¸„à¹‰à¸‡', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-28', name: 'Impactor à¸”à¹‰à¸²à¸¡à¹€à¸«à¸¥à¹‡à¸ / à¸”à¹‰à¸²à¸¡à¹„à¸¡à¹‰', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-29', name: 'Jacob Chuck / Telescope', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-30', name: 'Kerrison 2 / 3/ 4 /5 mm', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-31', name: 'Kocher Clamp à¸•à¸£à¸‡ 1à¸•à¸±à¸§', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-32', name: 'Macdonald à¸¡à¸µà¸£à¸¹ /à¹„à¸¡à¹ˆà¸¡à¸µà¸£à¸¹', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-33', name: 'Narrow plate (à¸«à¹ˆà¸­ Ok.)', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-34', name: 'Nerve hook / Nerve Root à¹‚à¸„à¹‰à¸‡', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-35', name: 'Osteotome (à¸ªà¸´à¹ˆà¸§)à¹‚à¸„à¹‰à¸‡/à¸•à¸£à¸‡........ mm', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-36', name: 'Periosteum + small hohmann', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-37', name: 'Periosteum à¸•à¸£à¸‡ /à¸”à¹‰à¸²à¸¡à¹€à¸«à¸¥à¹‡à¸', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-38', name: 'Protect sleeve', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-39', name: 'Reduction forceps / with point', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-40', name: 'Screw driver 3.5 / 4.5', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-41', name: 'Screw driver shaft 3.5 / 4.6', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-42', name: 'Self 8 à¸Šà¸´à¹‰à¸™ / Self Laminectomy', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-43', name: 'Small hohmann', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-44', name: 'Spinal probe /Sound', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-45', name: 'Spinal Retractor /Staple set', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-46', name: 'Tap 2.7/3.5/4.0/4.5/6.5', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-47', name: 'T-handle', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-48', name: 'Towel clip', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-49', name: 'T-wrench à¸ªà¸±à¹‰à¸™ / à¸¢à¸²à¸§ /à¸«à¸±à¸à¹„à¸”à¹‰', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-50', name: 'Universal chuck key', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-51', name: 'Universal drill sleeve 2.5/3.5', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-52', name: 'Universal drill sleeve 6.5', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-53', name: 'Wire cutter à¹€à¸¥à¹‡à¸ / à¹ƒà¸«à¸à¹ˆ', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-54', name: 'Wire passer à¹€à¸¥à¹‡à¸ /à¹ƒà¸«à¸à¹ˆ', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-55', name: 'à¸Šà¸¸à¸” Drill bit 4.5', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-56', name: 'Lowman clamp', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-57', name: 'Ankle Compressor (foot)', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-58', name: 'block cement à¹€à¸‚à¹ˆà¸²/ à¸ªà¸°à¹‚à¸žà¸', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-59', name: 'block cement à¸—à¸³ genta bead', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-60', name: 'Calcaneous bone spreader spatula', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-61', name: 'Chisel angle 15\' / 7 mm', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-62', name: 'DCP drill sleeve (à¹€à¸‚à¸µà¸¢à¸§à¹€à¸«à¸¥à¸·à¸­à¸‡)', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-63', name: 'Femoral retractor', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-64', name: 'Flag splitter', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-65', name: 'Gelpi ret. / Gelpi ret. à¸‚à¸²à¸¢à¸²à¸§', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-66', name: 'Gouge à¸•à¸£à¸‡ /à¹‚à¸„à¹‰à¸‡', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-67', name: 'Guide wire for c-spine', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-68', name: 'K-wire spreader (foot)', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-69', name: 'Lamina spreader', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-70', name: 'Meyerding Ret.(à¸ž.à¸­à¸²à¸—à¸´à¸•à¸¢à¹Œ à¸¡.)', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-71', name: 'Mikimon self retaining (Self à¸ž.à¸ªà¸¸à¸§à¸´à¹‚à¸Šà¸•à¸´)', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-72', name: 'Milligant discectomy', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-73', name: 'Osteotome à¸•à¸£à¸‡ 7 à¸¡à¸¡.à¸¢à¸²à¸§ 16.5"', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-74', name: 'Pelvic reduction clamp', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-75', name: 'Reposition forceps à¹€à¸¥à¹‡à¸ /à¹ƒà¸«à¸à¹ˆ', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-76', name: 'Retractor à¸‚à¸²à¹€à¸”à¸µà¸¢à¸§/ à¸ž.à¹€à¸à¸©à¸¡', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-77', name: 'Reverse curette 6 mm', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-78', name: 'William micro discectomy 1x5 mm', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-79', name: 'William micro discectomy 1x7 mm', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-80', name: 'William micro discectomy 2x5 mm', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-81', name: 'à¸„à¹‰à¸­à¸™ 300/ 350/500/700/900', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-82', name: 'à¸„à¸µà¸¡à¸›à¸²à¸à¹à¸šà¸™ / à¹à¸«à¸¥à¸¡', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-83', name: 'à¸„à¸µà¸¡à¸¥à¹‡à¸­à¸„', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-84', name: 'à¸Šà¸¸à¸” C-Spine ( 7 à¸Šà¸´à¹‰à¸™ )', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-85', name: 'à¸Šà¸¸à¸” à¹ƒà¸ªà¹ˆ Plate à¸™à¸´à¹‰à¸§ ( 12 à¸Šà¸´à¹‰à¸™ )', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-86', name: 'à¸•à¸±à¸§à¸ˆà¸±à¸šà¸«à¸¡à¸¸à¸”', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-87', name: 'à¸•à¸±à¸§à¸¢à¹‰à¸³ K-wire', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-88', name: 'à¸–à¹‰à¸§à¸¢ Cement', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-89', name: 'à¸–à¸¸à¸‡ Scope / à¸–à¸¸à¸‡ X-ray', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-90', name: 'à¸–à¸¸à¸‡ Stockinette Hip/Knee', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-91', name: 'à¸–à¸¸à¸‡à¸à¸¥à¹‰à¸­à¸‡ liga', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-92', name: 'à¸—à¸µà¹ˆà¸ˆà¸µà¹‰à¹€à¸ªà¹‰à¸™à¸›à¸£à¸°à¸ªà¸²à¸— à¸ž.à¸ªà¸¸à¸£à¸¨à¸±à¸à¸”à¸´à¹Œ', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-93', name: 'à¸—à¸µà¹ˆà¸”à¸±à¸” K-wire + Impactor', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-94', name: 'à¸—à¸µà¹ˆà¸”à¸±à¸”-à¸•à¸±à¸” K-wire /à¸„à¸µà¸¡à¸”à¸±à¸” K-wire', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-95', name: 'à¹ƒà¸šà¹€à¸¥à¸·à¹ˆà¸­à¸¢ Noâ€¦..', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-96', name: 'à¸›à¸£à¸°à¹à¸ˆ No.8 / 11 /10', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-97', name: 'à¹„à¸¡à¹‰à¸šà¸£à¸£à¸—à¸±à¸” à¹€à¸«à¸¥à¹‡à¸ /à¸ªà¸±à¹‰à¸™ / à¸¢à¸²à¸§', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-98', name: 'à¸¢à¸²à¸‡à¹€à¸—à¸²à¸Ÿà¹‰à¸² 6/ 4 / 3', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-99', name: 'à¸ªà¸²à¸¢ Small air drill', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-100', name: 'à¸ªà¸´à¹ˆà¸§ à¸•à¸£à¸‡,à¹‚à¸„à¹‰à¸‡', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-101', name: 'à¸ªà¸´à¹ˆà¸§ 9", 12 / 6 mm', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-102', name: 'à¸ªà¸´à¹ˆà¸§à¸”à¹‰à¸²à¸¡à¹€à¸«à¸¥à¹‡à¸ 11", 25mm à¸•à¸£à¸‡/ à¹‚à¸„à¹‰à¸‡', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-103', name: 'à¸ªà¸´à¹ˆà¸§à¸•à¸£à¸‡à¸¢à¸²à¸§ (à¸”à¹‰à¸²à¸¡à¹„à¸¡à¹‰)............... mm', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-104', name: 'à¸«à¹ˆà¸­ K-wire / Steinmann pin', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-105', name: 'à¸«à¸±à¸§ Sagittal saw', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-106', name: 'à¸«à¸±à¸§à¸•à¹ˆà¸­ reamer à¸‚à¸­à¸‡ Aesculap drill', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-107', name: 'à¸«à¸±à¸§à¸•à¹ˆà¸­ saw à¸‚à¸­à¸‡ Aesculap drill', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    { id: 'eq-ortho-108', name: 'à¹€à¸«à¸¥à¹‡à¸ X-ray', category: 'à¸•à¸¹à¹‰ Ortho', active: true },
-    // à¸•à¸¹à¹‰ Neuro
-    { id: 'eq-neuro-1', name: 'Bipolar forceps', category: 'à¸•à¸¹à¹‰ Neuro', active: true },
-    { id: 'eq-neuro-2', name: 'Brain spatula (1à¸Šà¸´à¹‰à¸™/6à¸Šà¸´à¹‰à¸™)', category: 'à¸•à¸¹à¹‰ Neuro', active: true },
-    { id: 'eq-neuro-3', name: 'Chinese Finger splint', category: 'à¸•à¸¹à¹‰ Neuro', active: true },
-    { id: 'eq-neuro-4', name: 'Codman disp perforator', category: 'à¸•à¸¹à¹‰ Neuro', active: true },
-    { id: 'eq-neuro-5', name: 'Dissection of hand', category: 'à¸•à¸¹à¹‰ Neuro', active: true },
-    { id: 'eq-neuro-6', name: 'Flu cloth', category: 'à¸•à¸¹à¹‰ Neuro', active: true },
-    { id: 'eq-neuro-7', name: 'Gigli saw handle + à¹à¸œà¹ˆà¸™à¸£à¸­à¸‡', category: 'à¸•à¸¹à¹‰ Neuro', active: true },
-    { id: 'eq-neuro-8', name: 'Hand drill', category: 'à¸•à¸¹à¹‰ Neuro', active: true },
-    { id: 'eq-neuro-9', name: 'Microsurgery Hand à¸ªà¸µà¹€à¸‡à¸´à¸™ / à¸ªà¸µà¸Ÿà¹‰à¸²', category: 'à¸•à¸¹à¹‰ Neuro', active: true },
-    { id: 'eq-neuro-10', name: 'Miniplate set 1.7 / 2.0', category: 'à¸•à¸¹à¹‰ Neuro', active: true },
-    { id: 'eq-neuro-11', name: 'Self thyroid à¹€à¸¥à¹‡à¸ / à¹ƒà¸«à¸à¹ˆ', category: 'à¸•à¸¹à¹‰ Neuro', active: true },
-    { id: 'eq-neuro-12', name: 'Self thyroid à¸«à¸±à¸à¹„à¸”à¹‰', category: 'à¸•à¸¹à¹‰ Neuro', active: true },
-    { id: 'eq-neuro-13', name: 'Set à¸•à¹ˆà¸­ Nerve', category: 'à¸•à¸¹à¹‰ Neuro', active: true },
-    { id: 'eq-neuro-14', name: 'Skull tong', category: 'à¸•à¸¹à¹‰ Neuro', active: true },
-    { id: 'eq-neuro-15', name: 'V-P Shunt handle', category: 'à¸•à¸¹à¹‰ Neuro', active: true },
-    { id: 'eq-neuro-16', name: 'V-P Shunt passer (à¹„à¸à¸”à¹Œà¸¢à¸²à¸§)', category: 'à¸•à¸¹à¹‰ Neuro', active: true },
-    { id: 'eq-neuro-17', name: 'à¹€à¸„à¸£à¸·à¹ˆà¸­à¸‡à¸¡à¸·à¸­ hand (à¸ž.à¸¡à¸µà¸™à¸²)', category: 'à¸•à¸¹à¹‰ Neuro', active: true },
-    { id: 'eq-neuro-18', name: 'à¸Šà¸¸à¸”à¸«à¸±à¸§ Burr / Twist drill', category: 'à¸•à¸¹à¹‰ Neuro', active: true },
-    { id: 'eq-neuro-19', name: 'à¸”à¸­à¸à¸ªà¸§à¹ˆà¸²à¸™', category: 'à¸•à¸¹à¹‰ Neuro', active: true },
-    { id: 'eq-neuro-20', name: 'à¹ƒà¸šà¹€à¸¥à¸·à¹ˆà¸­à¸¢', category: 'à¸•à¸¹à¹‰ Neuro', active: true },
-    { id: 'eq-neuro-21', name: 'à¸«à¸±à¸§à¸à¸£à¸­ 3 / 5 m.m.', category: 'à¸•à¸¹à¹‰ Neuro', active: true },
-    { id: 'eq-neuro-22', name: 'à¸«à¸±à¸§à¹ƒà¸šà¸žà¸²à¸¢', category: 'à¸•à¸¹à¹‰ Neuro', active: true },
 
-    // à¸•à¸¹à¹‰ General
-    { id: 'eq-genr-1', name: 'Abdominal à¹€à¸¥à¹‡à¸ / à¸à¸¥à¸²à¸‡', category: 'à¸•à¸¹à¹‰ General', active: true },
-    { id: 'eq-genr-2', name: 'Allis à¸ªà¸±à¹‰à¸™ / à¸¢à¸²à¸§', category: 'à¸•à¸¹à¹‰ General', active: true },
-    { id: 'eq-genr-3', name: 'Army navy retractor', category: 'à¸•à¸¹à¹‰ General', active: true },
-    { id: 'eq-genr-4', name: 'Arterial clamp à¸•à¸£à¸‡ / à¹‚à¸„à¹‰à¸‡', category: 'à¸•à¸¹à¹‰ General', active: true },
-    { id: 'eq-genr-5', name: 'Babcock à¸ªà¸±à¹‰à¸™ / à¸¢à¸²à¸§', category: 'à¸•à¸¹à¹‰ General', active: true },
-    { id: 'eq-genr-6', name: 'Deep retractor à¸ªà¸±à¹‰à¸™ / à¸¢à¸²à¸§', category: 'à¸•à¸¹à¹‰ General', active: true },
-    { id: 'eq-genr-7', name: 'Deaver à¹€à¸¥à¹‡à¸ / à¹ƒà¸«à¸à¹ˆ / à¸à¸¥à¸²à¸‡', category: 'à¸•à¸¹à¹‰ General', active: true },
-    { id: 'eq-genr-8', name: 'Deaver à¸«à¸™à¹‰à¸²à¸à¸§à¹‰à¸²à¸‡ / sweet heart', category: 'à¸•à¸¹à¹‰ General', active: true },
-    { id: 'eq-genr-9', name: 'Dilator rectum 18,14,10 à¸Šà¸´à¹‰à¸™', category: 'à¸•à¸¹à¹‰ General', active: true },
-    { id: 'eq-genr-10', name: 'Intestinal clamps à¸•à¸£à¸‡ / à¹‚à¸„à¹‰à¸‡', category: 'à¸•à¸¹à¹‰ General', active: true },
-    { id: 'eq-genr-11', name: 'Intestinal right angle', category: 'à¸•à¸¹à¹‰ General', active: true },
-    { id: 'eq-genr-12', name: 'Kocher clamp à¹‚à¸„à¹‰à¸‡ (4 à¸•à¸±à¸§)', category: 'à¸•à¸¹à¹‰ General', active: true },
-    { id: 'eq-genr-13', name: 'Mosquito à¹‚à¸„à¹‰à¸‡ (3 à¸•à¸±à¸§) , à¸•à¸£à¸‡ (3à¸•à¸±à¸§)', category: 'à¸•à¸¹à¹‰ General', active: true },
-    { id: 'eq-genr-14', name: 'Pean curve ( 6à¸•à¸±à¸§ )', category: 'à¸•à¸¹à¹‰ General', active: true },
-    { id: 'eq-genr-15', name: 'Payr clamp 2 à¸•à¸±à¸§', category: 'à¸•à¸¹à¹‰ General', active: true },
-    { id: 'eq-genr-16', name: 'Procto à¸—à¸µà¹ˆà¸–à¹ˆà¸²à¸‡à¸à¹‰à¸™', category: 'à¸•à¸¹à¹‰ General', active: true },
-    { id: 'eq-genr-17', name: 'Procto à¸˜à¸£à¸£à¸¡à¸”à¸² / à¸œà¹ˆà¸²à¸à¸¥à¸²à¸‡', category: 'à¸•à¸¹à¹‰ General', active: true },
-    { id: 'eq-genr-18', name: 'Purse string clamp', category: 'à¸•à¸¹à¹‰ General', active: true },
-    { id: 'eq-genr-19', name: 'Retractor à¸à¸²à¸šà¸à¸¥à¹‰à¸§à¸¢', category: 'à¸•à¸¹à¹‰ General', active: true },
-    { id: 'eq-genr-20', name: 'Retractor à¹€à¸ˆà¸²à¸°à¸„à¸­', category: 'à¸•à¸¹à¹‰ General', active: true },
-    { id: 'eq-genr-21', name: 'Right angle 4 à¸•à¸±à¸§', category: 'à¸•à¸¹à¹‰ General', active: true },
-    { id: 'eq-genr-22', name: 'Saint Mark à¸˜à¸£à¸£à¸¡à¸”à¸² /à¸›à¸¥à¸²à¸¢à¸¢à¸²à¸§à¸‡à¸­', category: 'à¸•à¸¹à¹‰ General', active: true },
-    { id: 'eq-genr-23', name: 'Self à¸¨à¸±à¸¥à¸¢à¹Œ 9 à¸Šà¸´à¹‰à¸™', category: 'à¸•à¸¹à¹‰ General', active: true },
-    { id: 'eq-genr-24', name: 'Spatula à¸¡à¸µà¸£à¸¹', category: 'à¸•à¸¹à¹‰ General', active: true },
-    { id: 'eq-genr-25', name: 'Sponge holder à¸•à¸£à¸‡ / à¹‚à¸„à¹‰à¸‡ 2 à¸•à¸±à¸§', category: 'à¸•à¸¹à¹‰ General', active: true },
-    { id: 'eq-genr-26', name: 'Tonsil clamp 2 à¸•à¸±à¸§ à¸›à¸¥à¸²à¸¢à¹à¸«à¸¥à¸¡, à¸˜à¸£à¸£à¸¡à¸”à¸²', category: 'à¸•à¸¹à¹‰ General', active: true },
-    // Existing General
-    { id: 'eq-40', name: 'Scalpel Handle #3 / #4 (à¸”à¹‰à¸²à¸¡à¸¡à¸µà¸”à¸œà¹ˆà¸²à¸•à¸±à¸”)', category: 'à¸•à¸¹à¹‰ General', active: true },
-    { id: 'eq-41', name: 'Electrocautery Pencil (à¸”à¹‰à¸²à¸¡à¸ˆà¸µà¹‰à¹„à¸Ÿà¸Ÿà¹‰à¸²)', category: 'à¸•à¸¹à¹‰ General', active: true },
-    { id: 'eq-42', name: 'Harmonic Scalpel Handpiece', category: 'à¸•à¸¹à¹‰ General', active: true },
-    { id: 'eq-43', name: 'Skin Stapler', category: 'à¸•à¸¹à¹‰ General', active: true },
-    { id: 'eq-44', name: 'Suction Tip (Yankauer / Poole)', category: 'à¸•à¸¹à¹‰ General', active: true },
-    // à¸•à¸¹à¹‰ Plastic
-    { id: 'eq-plas-1', name: 'Deep retractor à¸¢à¸²à¸§ (in-out) à¸„à¸¹à¹ˆ', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-2', name: 'Deep retractor à¸¢à¸²à¸§ (out) 1 à¸•à¸±à¸§', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-3', name: 'Pig tail', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-4', name: 'Set orthognathic (à¸—à¸±à¸™à¸•à¸à¸£à¸£à¸¡)', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-5', name: 'Setà¸–à¸­à¸™à¸Ÿà¸±à¸™ 34 à¸Šà¸´à¹‰à¸™', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-6', name: 'Tongue blade', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-7', name: 'Towel clip à¸ž.à¸˜à¸™à¸žà¸‡à¸©à¹Œ', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-8', name: 'Wire suspension', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-9', name: 'Wire twister', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-10', name: 'Senn retractor', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-11', name: 'à¸à¸£à¸£à¹„à¸à¸£ Mayo 6", à¸¢à¸²à¸§ 9"', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-12', name: 'à¸à¸£à¸£à¹„à¸à¸£à¸•à¸±à¸”à¸¥à¸§à¸”', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-13', name: 'à¸à¸£à¸£à¹„à¸à¸£à¸•à¸±à¸”à¹„à¸«à¸¡ à¸ªà¸±à¹‰à¸™ 6", à¸¢à¸²à¸§ 8" 9"', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-14', name: 'à¸à¸£à¸°à¸ˆà¸à¸ªà¹ˆà¸­à¸‡à¸Ÿà¸±à¸™', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-15', name: 'à¸à¸¥à¹ˆà¸­à¸‡à¸¥à¸§à¸” Plastic', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-16', name: 'à¹€à¸‚à¹‡à¸¡à¸£à¹‰à¸­à¸¢à¸¥à¸§à¸”', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-17', name: 'à¸”à¹‰à¸²à¸¡à¸¡à¸µà¸”à¸à¸£à¹Šà¸²à¸Ÿ', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-18', name: 'à¸”à¹‰à¸²à¸¡à¸¡à¸µà¸”à¹€à¸¥à¹‡à¸à¸ªà¸±à¹‰à¸™ No.3 / 4 / 7 / 3L', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-19', name: 'à¸—à¸µà¹ˆà¸‡à¸±à¸”à¸ˆà¸¡à¸¹à¸ 4 à¸Šà¸´à¹‰à¸™', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-20', name: 'à¸—à¸µà¹ˆà¸”à¸±à¸” Plate à¸ž.à¸žà¸±à¸¥à¸¥à¸ à¸²', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-21', name: 'à¸—à¸µà¹ˆà¹à¸¢à¸‡à¸—à¹ˆà¸­à¸™à¹‰à¸³à¸•à¸²', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-22', name: 'à¹„à¸¡à¹‰à¸à¸”à¸¥à¸´à¹‰à¸™', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-23', name: 'à¹„à¸¡à¹‰à¸à¸£à¹Šà¸²à¸Ÿ', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-24', name: 'à¸§à¸‡à¹€à¸§à¸µà¸¢à¸™', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-25', name: 'à¸ªà¸²à¸¢à¸¥à¸¡ Mini Air drill', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-26', name: 'à¸«à¸±à¸§ Drill of Mini Air drill', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-27', name: 'à¸«à¸±à¸§à¸ˆà¸µà¹‰à¸¢à¸²à¸§', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-28', name: 'à¸«à¸±à¸§à¸•à¹ˆà¸­ Suction à¹€à¸«à¸¥à¹‡à¸', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-29', name: 'à¸«à¸±à¸§à¸¢à¸´à¸‡ K-wire', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-30', name: 'Bayonet forceps', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-31', name: 'Bone hook à¹€à¸¥à¹‡à¸ / à¹ƒà¸«à¸à¹ˆ', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-32', name: 'Bulldog clamp 3 à¸•à¸±à¸§', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-33', name: 'Dent Heart à¹€à¸¥à¹‡à¸ / à¹ƒà¸«à¸à¹ˆ', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-34', name: 'Dermatel 2 à¸•à¸±à¸§', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-35', name: 'Dingman', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-36', name: 'Double hook / Skin hook', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-37', name: 'Duhamel', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-38', name: 'Forceps 7" (tooth,non-tooth) à¸«à¸™à¸²,à¸šà¸²à¸‡', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-39', name: 'Hand piece of Mini Air drill', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-40', name: 'Jeweler forceps angle', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-41', name: 'Jeweler forceps à¸•à¸£à¸‡', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-42', name: 'Kocher dissector', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-43', name: 'Long Forceps 10" (tooth,non-tooth), 12"', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-44', name: 'Mandible reduction', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-45', name: 'Maxillary elevator', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-46', name: 'Metzenbaum 10"', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-47', name: 'Metzenbaum 6"', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-48', name: 'Metzenbaum 7"', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-49', name: 'Metzenbaum 8"', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-50', name: 'Metzenbaum 9"', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-51', name: 'Metzenbaum à¸›à¸¥à¸²à¸¢à¹à¸«à¸¥à¸¡à¹€à¸¥à¹‡à¸', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-52', name: 'Micro forceps', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-53', name: 'Micro Needle', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-54', name: 'Micro scissors', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-55', name: 'Mouth gag', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-56', name: 'Mouth prop (à¸™à¹‰à¸³à¸•à¸²à¸¥)', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-57', name: 'Nasal retractor', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-58', name: 'Nasal Volkman', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-59', name: 'Needle biopsy 3 à¸•à¸±à¸§', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-60', name: 'Needle Bx. 5 à¸Šà¸´à¹‰à¸™', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-61', name: 'Needle holder 10" (à¸›à¸¥à¸²à¸¢à¸‡à¸­/à¸ž.à¹€à¸‚à¸µà¸¢à¸§)', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-62', name: 'Needle à¸ˆà¸±à¸šà¸¥à¸§à¸”', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-63', name: 'Needle à¸”à¹‰à¸²à¸¡à¸—à¸­à¸‡ 10"', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-64', name: 'Needle à¸”à¹‰à¸²à¸¡à¸—à¸­à¸‡ 5"', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-65', name: 'Needle à¸”à¹‰à¸²à¸¡à¸—à¸­à¸‡ 6"', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-66', name: 'Needle à¸”à¹‰à¸²à¸¡à¸—à¸­à¸‡ 7"', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-67', name: 'Needle à¸”à¹‰à¸²à¸¡à¸—à¸­à¸‡ 8"', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-68', name: 'Periosteum + Zygoma', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-69', name: 'Periosteum + à¸•à¸°à¹„à¸š', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-70', name: 'Periosteum ORIF', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-71', name: 'Periosteum à¸à¸™à¸ˆà¸¡à¸¹à¸', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-72', name: 'Periosteum à¹€à¸¥à¹‡à¸', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-73', name: 'Probe à¸˜à¸£à¸£à¸¡à¸”à¸² / à¸«à¸²à¸‡à¸›à¸¥à¸²', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-74', name: 'Rib Retractor (à¸ž.à¸žà¸‡à¸©à¹Œà¸ªà¸´à¸—à¸˜à¸´à¹Œ)', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-75', name: 'Screw driver 2.0 à¹€à¸¥à¹‡à¸ / à¹ƒà¸«à¸à¹ˆ', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-76', name: 'Screw driver 1.7 / 1.6 à¸à¸¥à¹ˆà¸­à¸‡à¹ƒà¸«à¸à¹ˆ', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-77', name: 'Septum knife', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-78', name: 'Set à¸–à¸­à¸™à¸Ÿà¸±à¸™ 7 à¸Šà¸´à¹‰à¸™', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-79', name: 'Short forceps (tooth-non,tooth)', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-80', name: 'Suction tube 8/10/12/15', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-81', name: 'Suction à¸«à¸¥à¸²à¸¢à¸£à¸¹ à¹€à¸¥à¹‡à¸ /à¹ƒà¸«à¸à¹ˆ', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-82', name: 'Trocar gallbladder+guide', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-83', name: 'Vascular approximator', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-plas-84', name: 'Volkman 2 à¸•à¸±à¸§', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    // Existing Plastic
-    { id: 'eq-50', name: 'Micro Scissors (à¸à¸£à¸£à¹„à¸à¸£à¸•à¸à¹à¸•à¹ˆà¸‡à¸¨à¸±à¸¥à¸¢à¸à¸£à¸£à¸¡)', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-51', name: 'Adson Tooth Forceps (1x2)', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-52', name: 'Plastic Needle Holder (Castroviejo)', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-53', name: 'Skin Hook Retractor', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
-    { id: 'eq-54', name: 'Freer Elevator', category: 'à¸•à¸¹à¹‰ Plastic', active: true },
+    // ตู้ Ortho
+    { id: 'eq-ortho-1', name: 'Acetabulum Clamp เล็ก / ใหญ่', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-2', name: 'Aiming Device / Bone Biopsy', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-3', name: 'Bending Iron (ดัดplateมือ)', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-4', name: 'Bone Clamp เล็ก/ กลาง / ใหญ่', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-5', name: 'Bone Cutter เล็ก / ใหญ่', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-6', name: 'Bone Hook / Bone Skid', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-7', name: 'Bone Rongeur Beyer / Stille', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-8', name: 'Bone Rongeur Ruskin / angle stille', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-9', name: 'Broken screw (ชุด)', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-10', name: 'Cartilage set', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-11', name: 'Cervical dissector (Bone graft 7 ชิ้น)', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-12', name: 'Cervical Spreader', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-13', name: 'Cloward (14ชิ้น)', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-14', name: 'Cobb 9 นิ้ว ด้ามไม้ / ด้ามเหล็ก', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-15', name: 'Cobb ยาว 11นิ้ว 10 / 18 mm.', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-16', name: 'Curette (ฟันหนู 13mm/8.5mm)', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-17', name: 'Curette No.', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-18', name: 'Curette spine 3 ชิ้น ตรง /โค้ง', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-19', name: 'Curette ตรง no. 3 (พ.สุวิโชติ)', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-20', name: 'Depth Gauge for 3.5 / 4.5', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-21', name: 'Drill bit 1.1/1.5 /2.0 /2.5 /2.7', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-22', name: 'Drill bit 3.2/3.5/4.5/6.0', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-23', name: 'Drill sleeve 2.5/3.5', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-24', name: 'Freer (Penfield) สั้น /ยาว', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-25', name: 'Freer + ด้ามมีด No.7', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-26', name: 'Hibbs retractor เล็ก / ใหญ่', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-27', name: 'Hohmann Ret gen / โค้ง', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-28', name: 'Impactor ด้ามเหล็ก / ด้ามไม้', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-29', name: 'Jacob Chuck / Telescope', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-30', name: 'Kerrison 2 / 3/ 4 /5 mm', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-31', name: 'Kocher Clamp ตรง 1ตัว', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-32', name: 'Macdonald มีรู /ไม่มีรู', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-33', name: 'Narrow plate (ห่อ Ok.)', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-34', name: 'Nerve hook / Nerve Root โค้ง', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-35', name: 'Osteotome (สิ่ว)โค้ง/ตรง........ mm', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-36', name: 'Periosteum + small hohmann', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-37', name: 'Periosteum ตรง /ด้ามเหล็ก', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-38', name: 'Protect sleeve', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-39', name: 'Reduction forceps / with point', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-40', name: 'Screw driver 3.5 / 4.5', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-41', name: 'Screw driver shaft 3.5 / 4.6', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-42', name: 'Self 8 ชิ้น / Self Laminectomy', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-43', name: 'Small hohmann', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-44', name: 'Spinal probe /Sound', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-45', name: 'Spinal Retractor /Staple set', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-46', name: 'Tap 2.7/3.5/4.0/4.5/6.5', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-47', name: 'T-handle', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-48', name: 'Towel clip', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-49', name: 'T-wrench สั้น / ยาว /หักได้', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-50', name: 'Universal chuck key', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-51', name: 'Universal drill sleeve 2.5/3.5', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-52', name: 'Universal drill sleeve 6.5', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-53', name: 'Wire cutter เล็ก / ใหญ่', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-54', name: 'Wire passer เล็ก /ใหญ่', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-55', name: 'ชุด Drill bit 4.5', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-56', name: 'Lowman clamp', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-57', name: 'Ankle Compressor (foot)', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-58', name: 'block cement เข่า/ สะโพก', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-59', name: 'block cement ทำ genta bead', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-60', name: 'Calcaneous bone spreader spatula', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-61', name: 'Chisel angle 15\' / 7 mm', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-62', name: 'DCP drill sleeve (เขียวเหลือง)', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-63', name: 'Femoral retractor', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-64', name: 'Flag splitter', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-65', name: 'Gelpi ret. / Gelpi ret. ขายาว', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-66', name: 'Gouge ตรง /โค้ง', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-67', name: 'Guide wire for c-spine', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-68', name: 'K-wire spreader (foot)', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-69', name: 'Lamina spreader', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-70', name: 'Meyerding Ret.(พ.อาทิตย์ ม.)', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-71', name: 'Mikimon self retaining (Self พ.สุวิโชติ)', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-72', name: 'Milligant discectomy', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-73', name: 'Osteotome ตรง 7 มม.ยาว 16.5"', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-74', name: 'Pelvic reduction clamp', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-75', name: 'Reposition forceps เล็ก /ใหญ่', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-76', name: 'Retractor ขาเดียว/ พ.เกษม', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-77', name: 'Reverse curette 6 mm', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-78', name: 'William micro discectomy 1x5 mm', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-79', name: 'William micro discectomy 1x7 mm', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-80', name: 'William micro discectomy 2x5 mm', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-81', name: 'ค้อน 300/ 350/500/700/900', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-82', name: 'คีมปากแบน / แหลม', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-83', name: 'คีมล็อค', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-84', name: 'ชุด C-Spine ( 7 ชิ้น )', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-85', name: 'ชุด ใส่ Plate นิ้ว ( 12 ชิ้น )', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-86', name: 'ตัวจับหมุด', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-87', name: 'ตัวย้ำ K-wire', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-88', name: 'ถ้วย Cement', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-89', name: 'ถุง Scope / ถุง X-ray', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-90', name: 'ถุง Stockinette Hip/Knee', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-91', name: 'ถุงกล้อง liga', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-92', name: 'ที่จี้เส้นประสาท พ.สุรศักดิ์', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-93', name: 'ที่ดัด K-wire + Impactor', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-94', name: 'ที่ดัด-ตัด K-wire /คีมดัด K-wire', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-95', name: 'ใบเลื่อย No…..', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-96', name: 'ประแจ No.8 / 11 /10', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-97', name: 'ไม้บรรทัด เหล็ก /สั้น / ยาว', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-98', name: 'ยางเทาฟ้า 6/ 4 / 3', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-99', name: 'สาย Small air drill', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-100', name: 'สิ่ว ตรง,โค้ง', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-101', name: 'สิ่ว 9", 12 / 6 mm', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-102', name: 'สิ่วด้ามเหล็ก 11", 25mm ตรง/ โค้ง', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-103', name: 'สิ่วตรงยาว (ด้ามไม้)............... mm', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-104', name: 'ห่อ K-wire / Steinmann pin', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-105', name: 'หัว Sagittal saw', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-106', name: 'หัวต่อ reamer ของ Aesculap drill', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-107', name: 'หัวต่อ saw ของ Aesculap drill', category: 'ตู้ Ortho', active: true },
+    { id: 'eq-ortho-108', name: 'เหล็ก X-ray', category: 'ตู้ Ortho', active: true },
 
-    // à¸•à¸¹à¹‰ Ob-gyn
-    { id: 'eq-obgyn-1', name: 'A-P retractor', category: 'à¸•à¸¹à¹‰ Ob-gyn', active: true },
-    { id: 'eq-obgyn-2', name: 'Curette suction', category: 'à¸•à¸¹à¹‰ Ob-gyn', active: true },
-    { id: 'eq-obgyn-3', name: 'Curettage à¸ªà¸¹à¸•à¸´ 10 à¸Šà¸´à¹‰à¸™ , 17 à¸Šà¸´à¹‰à¸™', category: 'à¸•à¸¹à¹‰ Ob-gyn', active: true },
-    { id: 'eq-obgyn-4', name: 'Doyen retractor', category: 'à¸•à¸¹à¹‰ Ob-gyn', active: true },
-    { id: 'eq-obgyn-5', name: 'Forceps à¸ªà¸¹à¸•à¸´', category: 'à¸•à¸¹à¹‰ Ob-gyn', active: true },
-    { id: 'eq-obgyn-6', name: 'Heaney clamp', category: 'à¸•à¸¹à¹‰ Ob-gyn', active: true },
-    { id: 'eq-obgyn-7', name: 'Hook à¹€à¸à¸µà¹ˆà¸¢à¸§ tube', category: 'à¸•à¸¹à¹‰ Ob-gyn', active: true },
-    { id: 'eq-obgyn-8', name: 'Posterior retractor', category: 'à¸•à¸¹à¹‰ Ob-gyn', active: true },
-    { id: 'eq-obgyn-9', name: 'Retractor à¸ž.à¸žà¸±à¸¥à¸¥à¸  3 à¸Šà¸´à¹‰à¸™', category: 'à¸•à¸¹à¹‰ Ob-gyn', active: true },
-    { id: 'eq-obgyn-10', name: 'Russian 7", 9"', category: 'à¸•à¸¹à¹‰ Ob-gyn', active: true },
-    { id: 'eq-obgyn-11', name: 'Silver cath à¸ªà¸±à¹‰à¸™ / à¸¢à¸²à¸§', category: 'à¸•à¸¹à¹‰ Ob-gyn', active: true },
-    { id: 'eq-obgyn-12', name: 'Speculum', category: 'à¸•à¸¹à¹‰ Ob-gyn', active: true },
-    { id: 'eq-obgyn-13', name: 'Tenaculum', category: 'à¸•à¸¹à¹‰ Ob-gyn', active: true },
-    { id: 'eq-obgyn-14', name: 'Uterine clamp', category: 'à¸•à¸¹à¹‰ Ob-gyn', active: true },
-    { id: 'eq-obgyn-15', name: 'Uterine elevator', category: 'à¸•à¸¹à¹‰ Ob-gyn', active: true },
-    { id: 'eq-obgyn-16', name: 'Wertheim angie', category: 'à¸•à¸¹à¹‰ Ob-gyn', active: true },
-    { id: 'eq-obgyn-17', name: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸‰à¸µà¸”à¸ªà¸µà¸—à¸²à¸‡ Vagina 1', category: 'à¸•à¸¹à¹‰ Ob-gyn', active: true },
-    { id: 'eq-obgyn-18', name: 'Myoma Screw', category: 'à¸•à¸¹à¹‰ Ob-gyn', active: true },
-    { id: 'eq-obgyn-19', name: 'Curette à¸ªà¸¹à¸•à¸´ 10 à¸Šà¸´à¹‰à¸™', category: 'à¸•à¸¹à¹‰ Ob-gyn', active: true },
-    { id: 'eq-obgyn-20', name: 'Breisky Retractor', category: 'à¸•à¸¹à¹‰ Ob-gyn', active: true },
-    { id: 'eq-obgyn-21', name: 'Self TAH', category: 'à¸•à¸¹à¹‰ Ob-gyn', active: true },
-    // Existing Ob-gyn
-    { id: 'eq-60', name: 'Set à¸œà¹ˆà¸²à¸•à¸±à¸”à¸—à¸³à¸„à¸¥à¸­à¸” C-Section', category: 'à¸•à¸¹à¹‰ Ob-gyn', active: true },
-    { id: 'eq-61', name: 'Vaginal Speculum (Graves/Pederson)', category: 'à¸•à¸¹à¹‰ Ob-gyn', active: true },
-    { id: 'eq-62', name: 'Tenaculum Forceps', category: 'à¸•à¸¹à¹‰ Ob-gyn', active: true },
-    { id: 'eq-63', name: 'Uterine Sound', category: 'à¸•à¸¹à¹‰ Ob-gyn', active: true },
-    { id: 'eq-64', name: 'Ovum Forceps / Curette', category: 'à¸•à¸¹à¹‰ Ob-gyn', active: true },
+    // ตู้ Neuro
+    { id: 'eq-neuro-1', name: 'Bipolar forceps', category: 'ตู้ Neuro', active: true },
+    { id: 'eq-neuro-2', name: 'Brain spatula (1ชิ้น/6ชิ้น)', category: 'ตู้ Neuro', active: true },
+    { id: 'eq-neuro-3', name: 'Chinese Finger splint', category: 'ตู้ Neuro', active: true },
+    { id: 'eq-neuro-4', name: 'Codman disp perforator', category: 'ตู้ Neuro', active: true },
+    { id: 'eq-neuro-5', name: 'Dissection of hand', category: 'ตู้ Neuro', active: true },
+    { id: 'eq-neuro-6', name: 'Flu cloth', category: 'ตู้ Neuro', active: true },
+    { id: 'eq-neuro-7', name: 'Gigli saw handle + แผ่นรอง', category: 'ตู้ Neuro', active: true },
+    { id: 'eq-neuro-8', name: 'Hand drill', category: 'ตู้ Neuro', active: true },
+    { id: 'eq-neuro-9', name: 'Microsurgery Hand สีเงิน / สีฟ้า', category: 'ตู้ Neuro', active: true },
+    { id: 'eq-neuro-10', name: 'Miniplate set 1.7 / 2.0', category: 'ตู้ Neuro', active: true },
+    { id: 'eq-neuro-11', name: 'Self thyroid เล็ก / ใหญ่', category: 'ตู้ Neuro', active: true },
+    { id: 'eq-neuro-12', name: 'Self thyroid หักได้', category: 'ตู้ Neuro', active: true },
+    { id: 'eq-neuro-13', name: 'Set ต่อ Nerve', category: 'ตู้ Neuro', active: true },
+    { id: 'eq-neuro-14', name: 'Skull tong', category: 'ตู้ Neuro', active: true },
+    { id: 'eq-neuro-15', name: 'V-P Shunt handle', category: 'ตู้ Neuro', active: true },
+    { id: 'eq-neuro-16', name: 'V-P Shunt passer (ไกด์ยาว)', category: 'ตู้ Neuro', active: true },
+    { id: 'eq-neuro-17', name: 'เครื่องมือ hand (พ.มีนา)', category: 'ตู้ Neuro', active: true },
+    { id: 'eq-neuro-18', name: 'ชุดหัว Burr / Twist drill', category: 'ตู้ Neuro', active: true },
+    { id: 'eq-neuro-19', name: 'ดอกสว่าน', category: 'ตู้ Neuro', active: true },
+    { id: 'eq-neuro-20', name: 'ใบเลื่อย', category: 'ตู้ Neuro', active: true },
+    { id: 'eq-neuro-21', name: 'หัวกรอ 3 / 5 m.m.', category: 'ตู้ Neuro', active: true },
+    { id: 'eq-neuro-22', name: 'หัวใบพาย', category: 'ตู้ Neuro', active: true },
 
-    // à¸•à¸¹à¹‰ Uro + Ob-gyn
-    { id: 'eq-uro-1', name: 'Dilator urethra à¸•à¸£à¸‡ 9,13,14', category: 'à¸•à¸¹à¹‰ Uro + Ob-gyn', active: true },
-    { id: 'eq-uro-2', name: 'Gelpi retractor 1 à¸„à¸¹à¹ˆ à¹‚à¸„à¹‰à¸‡', category: 'à¸•à¸¹à¹‰ Uro + Ob-gyn', active: true },
-    { id: 'eq-uro-3', name: 'Kidney stone 13 à¸Šà¸´à¹‰à¸™', category: 'à¸•à¸¹à¹‰ Uro + Ob-gyn', active: true },
-    { id: 'eq-uro-4', name: 'Micro needle URO ( 1 à¸„à¸¹à¹ˆ )', category: 'à¸•à¸¹à¹‰ Uro + Ob-gyn', active: true },
-    { id: 'eq-uro-5', name: 'Micro scissor à¸•à¸£à¸‡ / à¹‚à¸„à¹‰à¸‡', category: 'à¸•à¸¹à¹‰ Uro + Ob-gyn', active: true },
-    { id: 'eq-uro-6', name: 'Mixter right angle 2 à¸•à¸±à¸§', category: 'à¸•à¸¹à¹‰ Uro + Ob-gyn', active: true },
-    { id: 'eq-uro-7', name: 'Needle 5"', category: 'à¸•à¸¹à¹‰ Uro + Ob-gyn', active: true },
-    { id: 'eq-uro-8', name: 'Pedicle clamps 4 à¸•à¸±à¸§', category: 'à¸•à¸¹à¹‰ Uro + Ob-gyn', active: true },
-    { id: 'eq-uro-9', name: 'Periosteum+Rib shear', category: 'à¸•à¸¹à¹‰ Uro + Ob-gyn', active: true },
-    { id: 'eq-uro-10', name: 'Retractor à¸ˆà¸´à¹‹à¸§ à¸ªà¸±à¹‰à¸™ / à¸¢à¸²à¸§', category: 'à¸•à¸¹à¹‰ Uro + Ob-gyn', active: true },
-    { id: 'eq-uro-11', name: 'Rib cutter', category: 'à¸•à¸¹à¹‰ Uro + Ob-gyn', active: true },
-    { id: 'eq-uro-12', name: 'Stamey needle 3 à¸­à¸±à¸™', category: 'à¸•à¸¹à¹‰ Uro + Ob-gyn', active: true },
-    { id: 'eq-uro-13', name: 'Suction tip R.17/Suction plastic', category: 'à¸•à¸¹à¹‰ Uro + Ob-gyn', active: true },
-    { id: 'eq-uro-14', name: 'Stone forceps', category: 'à¸•à¸¹à¹‰ Uro + Ob-gyn', active: true },
-    { id: 'eq-uro-15', name: 'Turner Warwick 1 à¸„à¸¹à¹ˆ', category: 'à¸•à¸¹à¹‰ Uro + Ob-gyn', active: true },
-    { id: 'eq-uro-16', name: 'à¹„à¸¡à¹‰à¸šà¸£à¸£à¸—à¸±à¸” URO', category: 'à¸•à¸¹à¹‰ Uro + Ob-gyn', active: true }
+    // ตู้ General
+    { id: 'eq-genr-1', name: 'Abdominal เล็ก / กลาง', category: 'ตู้ General', active: true },
+    { id: 'eq-genr-2', name: 'Allis สั้น / ยาว', category: 'ตู้ General', active: true },
+    { id: 'eq-genr-3', name: 'Army navy retractor', category: 'ตู้ General', active: true },
+    { id: 'eq-genr-4', name: 'Arterial clamp ตรง / โค้ง', category: 'ตู้ General', active: true },
+    { id: 'eq-genr-5', name: 'Babcock สั้น / ยาว', category: 'ตู้ General', active: true },
+    { id: 'eq-genr-6', name: 'Deep retractor สั้น / ยาว', category: 'ตู้ General', active: true },
+    { id: 'eq-genr-7', name: 'Deaver เล็ก / ใหญ่ / กลาง', category: 'ตู้ General', active: true },
+    { id: 'eq-genr-8', name: 'Deaver หน้ากว้าง / sweet heart', category: 'ตู้ General', active: true },
+    { id: 'eq-genr-9', name: 'Dilator rectum 18,14,10 ชิ้น', category: 'ตู้ General', active: true },
+    { id: 'eq-genr-10', name: 'Intestinal clamps ตรง / โค้ง', category: 'ตู้ General', active: true },
+    { id: 'eq-genr-11', name: 'Intestinal right angle', category: 'ตู้ General', active: true },
+    { id: 'eq-genr-12', name: 'Kocher clamp โค้ง (4 ตัว)', category: 'ตู้ General', active: true },
+    { id: 'eq-genr-13', name: 'Mosquito โค้ง (3 ตัว) , ตรง (3ตัว)', category: 'ตู้ General', active: true },
+    { id: 'eq-genr-14', name: 'Pean curve ( 6ตัว )', category: 'ตู้ General', active: true },
+    { id: 'eq-genr-15', name: 'Payr clamp 2 ตัว', category: 'ตู้ General', active: true },
+    { id: 'eq-genr-16', name: 'Procto ที่ถ่างก้น', category: 'ตู้ General', active: true },
+    { id: 'eq-genr-17', name: 'Procto ธรรมดา / ผ่ากลาง', category: 'ตู้ General', active: true },
+    { id: 'eq-genr-18', name: 'Purse string clamp', category: 'ตู้ General', active: true },
+    { id: 'eq-genr-19', name: 'Retractor กาบกล้วย', category: 'ตู้ General', active: true },
+    { id: 'eq-genr-20', name: 'Retractor เจาะคอ', category: 'ตู้ General', active: true },
+    { id: 'eq-genr-21', name: 'Right angle 4 ตัว', category: 'ตู้ General', active: true },
+    { id: 'eq-genr-22', name: 'Saint Mark ธรรมดา /ปลายยาวงอ', category: 'ตู้ General', active: true },
+    { id: 'eq-genr-23', name: 'Self ศัลย์ 9 ชิ้น', category: 'ตู้ General', active: true },
+    { id: 'eq-genr-24', name: 'Spatula มีรู', category: 'ตู้ General', active: true },
+    { id: 'eq-genr-25', name: 'Sponge holder ตรง / โค้ง 2 ตัว', category: 'ตู้ General', active: true },
+    { id: 'eq-genr-26', name: 'Tonsil clamp 2 ตัว ปลายแหลม, ธรรมดา', category: 'ตู้ General', active: true },
+    { id: 'eq-40', name: 'Scalpel Handle #3 / #4 (ด้ามมีดผ่าตัด)', category: 'ตู้ General', active: true },
+    { id: 'eq-41', name: 'Electrocautery Pencil (ด้ามจี้ไฟฟ้า)', category: 'ตู้ General', active: true },
+    { id: 'eq-42', name: 'Harmonic Scalpel Handpiece', category: 'ตู้ General', active: true },
+    { id: 'eq-43', name: 'Skin Stapler', category: 'ตู้ General', active: true },
+    { id: 'eq-44', name: 'Suction Tip (Yankauer / Poole)', category: 'ตู้ General', active: true },
 
+    // ตู้ Plastic
+    { id: 'eq-plas-1', name: 'Deep retractor ยาว (in-out) คู่', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-2', name: 'Deep retractor ยาว (out) 1 ตัว', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-3', name: 'Pig tail', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-4', name: 'Set orthognathic (ทันตกรรม)', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-5', name: 'Setถอนฟัน 34 ชิ้น', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-6', name: 'Tongue blade', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-7', name: 'Towel clip พ.ธนพงษ์', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-8', name: 'Wire suspension', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-9', name: 'Wire twister', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-10', name: 'Senn retractor', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-11', name: 'กรรไกร Mayo 6", ยาว 9"', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-12', name: 'กรรไกรตัดลวด', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-13', name: 'กรรไกรตัดไหม สั้น 6", ยาว 8" 9"', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-14', name: 'กระจกส่องฟัน', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-15', name: 'กล่องลวด Plastic', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-16', name: 'เข็มร้อยลวด', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-17', name: 'ด้ามมีดกร๊าฟ', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-18', name: 'ด้ามมีดเล็กสั้น No.3 / 4 / 7 / 3L', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-19', name: 'ที่งัดจมูก 4 ชิ้น', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-20', name: 'ที่ดัด Plate พ.พัลลภา', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-21', name: 'ที่แยงท่อน้ำตา', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-22', name: 'ไม้กดลิ้น', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-23', name: 'ไม้กร๊าฟ', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-24', name: 'วงเวียน', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-25', name: 'สายลม Mini Air drill', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-26', name: 'หัว Drill of Mini Air drill', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-27', name: 'หัวจี้ยาว', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-28', name: 'หัวต่อ Suction เหล็ก', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-29', name: 'หัวยิง K-wire', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-30', name: 'Bayonet forceps', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-31', name: 'Bone hook เล็ก / ใหญ่', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-32', name: 'Bulldog clamp 3 ตัว', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-33', name: 'Dent Heart เล็ก / ใหญ่', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-34', name: 'Dermatel 2 ตัว', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-35', name: 'Dingman', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-36', name: 'Double hook / Skin hook', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-37', name: 'Duhamel', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-38', name: 'Forceps 7" (tooth,non-tooth) หนา,บาง', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-39', name: 'Hand piece of Mini Air drill', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-40', name: 'Jeweler forceps angle', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-41', name: 'Jeweler forceps ตรง', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-42', name: 'Kocher dissector', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-43', name: 'Long Forceps 10" (tooth,non-tooth), 12"', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-44', name: 'Mandible reduction', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-45', name: 'Maxillary elevator', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-46', name: 'Metzenbaum 10"', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-47', name: 'Metzenbaum 6"', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-48', name: 'Metzenbaum 7"', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-49', name: 'Metzenbaum 8"', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-50', name: 'Metzenbaum 9"', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-51', name: 'Metzenbaum ปลายแหลมเล็ก', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-52', name: 'Micro forceps', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-53', name: 'Micro Needle', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-54', name: 'Micro scissors', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-55', name: 'Mouth gag', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-56', name: 'Mouth prop (น้ำตาล)', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-57', name: 'Nasal retractor', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-58', name: 'Nasal Volkman', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-59', name: 'Needle biopsy 3 ตัว', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-60', name: 'Needle Bx. 5 ชิ้น', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-61', name: 'Needle holder 10" (ปลายงอ/พ.เขียว)', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-62', name: 'Needle จับลวด', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-63', name: 'Needle ด้ามทอง 10"', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-64', name: 'Needle ด้ามทอง 5"', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-65', name: 'Needle ด้ามทอง 6"', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-66', name: 'Needle ด้ามทอง 7"', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-67', name: 'Needle ด้ามทอง 8"', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-68', name: 'Periosteum + Zygoma', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-69', name: 'Periosteum + ตะไบ', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-70', name: 'Periosteum ORIF', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-71', name: 'Periosteum ฝนจมูก', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-72', name: 'Periosteum เล็ก', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-73', name: 'Probe ธรรมดา / หางปลา', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-74', name: 'Rib Retractor (พ.พงษ์สิทธิ์)', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-75', name: 'Screw driver 2.0 เล็ก / ใหญ่', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-76', name: 'Screw driver 1.7 / 1.6 กล่องใหญ่', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-77', name: 'Septum knife', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-78', name: 'Set ถอนฟัน 7 ชิ้น', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-79', name: 'Short forceps (tooth-non,tooth)', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-80', name: 'Suction tube 8/10/12/15', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-81', name: 'Suction หลายรู เล็ก /ใหญ่', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-82', name: 'Trocar gallbladder+guide', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-83', name: 'Vascular approximator', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-plas-84', name: 'Volkman 2 ตัว', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-50', name: 'Micro Scissors (กรรไกรตกแต่งศัลยกรรม)', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-51', name: 'Adson Tooth Forceps (1x2)', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-52', name: 'Plastic Needle Holder (Castroviejo)', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-53', name: 'Skin Hook Retractor', category: 'ตู้ Plastic', active: true },
+    { id: 'eq-54', name: 'Freer Elevator', category: 'ตู้ Plastic', active: true },
+
+    // ตู้ Ob-gyn
+    { id: 'eq-obgyn-1', name: 'A-P retractor', category: 'ตู้ Ob-gyn', active: true },
+    { id: 'eq-obgyn-2', name: 'Curette suction', category: 'ตู้ Ob-gyn', active: true },
+    { id: 'eq-obgyn-3', name: 'Curettage สูติ 10 ชิ้น , 17 ชิ้น', category: 'ตู้ Ob-gyn', active: true },
+    { id: 'eq-obgyn-4', name: 'Doyen retractor', category: 'ตู้ Ob-gyn', active: true },
+    { id: 'eq-obgyn-5', name: 'Forceps สูติ', category: 'ตู้ Ob-gyn', active: true },
+    { id: 'eq-obgyn-6', name: 'Heaney clamp', category: 'ตู้ Ob-gyn', active: true },
+    { id: 'eq-obgyn-7', name: 'Hook เกี่ยว tube', category: 'ตู้ Ob-gyn', active: true },
+    { id: 'eq-obgyn-8', name: 'Posterior retractor', category: 'ตู้ Ob-gyn', active: true },
+    { id: 'eq-obgyn-9', name: 'Retractor พ.พัลลภ 3 ชิ้น', category: 'ตู้ Ob-gyn', active: true },
+    { id: 'eq-obgyn-10', name: 'Russian 7", 9"', category: 'ตู้ Ob-gyn', active: true },
+    { id: 'eq-obgyn-11', name: 'Silver cath สั้น / ยาว', category: 'ตู้ Ob-gyn', active: true },
+    { id: 'eq-obgyn-12', name: 'Speculum', category: 'ตู้ Ob-gyn', active: true },
+    { id: 'eq-obgyn-13', name: 'Tenaculum', category: 'ตู้ Ob-gyn', active: true },
+    { id: 'eq-obgyn-14', name: 'Uterine clamp', category: 'ตู้ Ob-gyn', active: true },
+    { id: 'eq-obgyn-15', name: 'Uterine elevator', category: 'ตู้ Ob-gyn', active: true },
+    { id: 'eq-obgyn-16', name: 'Wertheim angie', category: 'ตู้ Ob-gyn', active: true },
+    { id: 'eq-obgyn-17', name: 'อุปกรณ์ฉีดสีทาง Vagina 1', category: 'ตู้ Ob-gyn', active: true },
+    { id: 'eq-obgyn-18', name: 'Myoma Screw', category: 'ตู้ Ob-gyn', active: true },
+    { id: 'eq-obgyn-19', name: 'Curette สูติ 10 ชิ้น', category: 'ตู้ Ob-gyn', active: true },
+    { id: 'eq-obgyn-20', name: 'Breisky Retractor', category: 'ตู้ Ob-gyn', active: true },
+    { id: 'eq-obgyn-21', name: 'Self TAH', category: 'ตู้ Ob-gyn', active: true },
+    { id: 'eq-60', name: 'Set ผ่าตัดทำคลอด C-Section', category: 'ตู้ Ob-gyn', active: true },
+    { id: 'eq-61', name: 'Vaginal Speculum (Graves/Pederson)', category: 'ตู้ Ob-gyn', active: true },
+    { id: 'eq-62', name: 'Tenaculum Forceps', category: 'ตู้ Ob-gyn', active: true },
+    { id: 'eq-63', name: 'Uterine Sound', category: 'ตู้ Ob-gyn', active: true },
+    { id: 'eq-64', name: 'Ovum Forceps / Curette', category: 'ตู้ Ob-gyn', active: true },
+
+    // ตู้ Uro + Ob-gyn
+    { id: 'eq-uro-1', name: 'Dilator urethra ตรง 9,13,14', category: 'ตู้ Uro + Ob-gyn', active: true },
+    { id: 'eq-uro-2', name: 'Gelpi retractor 1 คู่ โค้ง', category: 'ตู้ Uro + Ob-gyn', active: true },
+    { id: 'eq-uro-3', name: 'Kidney stone 13 ชิ้น', category: 'ตู้ Uro + Ob-gyn', active: true },
+    { id: 'eq-uro-4', name: 'Micro needle URO ( 1 คู่ )', category: 'ตู้ Uro + Ob-gyn', active: true },
+    { id: 'eq-uro-5', name: 'Micro scissor ตรง / โค้ง', category: 'ตู้ Uro + Ob-gyn', active: true },
+    { id: 'eq-uro-6', name: 'Mixter right angle 2 ตัว', category: 'ตู้ Uro + Ob-gyn', active: true },
+    { id: 'eq-uro-7', name: 'Needle 5"', category: 'ตู้ Uro + Ob-gyn', active: true },
+    { id: 'eq-uro-8', name: 'Pedicle clamps 4 ตัว', category: 'ตู้ Uro + Ob-gyn', active: true },
+    { id: 'eq-uro-9', name: 'Periosteum+Rib shear', category: 'ตู้ Uro + Ob-gyn', active: true },
+    { id: 'eq-uro-10', name: 'Retractor จิ๋ว สั้น / ยาว', category: 'ตู้ Uro + Ob-gyn', active: true },
+    { id: 'eq-uro-11', name: 'Rib cutter', category: 'ตู้ Uro + Ob-gyn', active: true },
+    { id: 'eq-uro-12', name: 'Stamey needle 3 อัน', category: 'ตู้ Uro + Ob-gyn', active: true },
+    { id: 'eq-uro-13', name: 'Suction tip R.17/Suction plastic', category: 'ตู้ Uro + Ob-gyn', active: true },
+    { id: 'eq-uro-14', name: 'Stone forceps', category: 'ตู้ Uro + Ob-gyn', active: true },
+    { id: 'eq-uro-15', name: 'Turner Warwick 1 คู่', category: 'ตู้ Uro + Ob-gyn', active: true },
+    { id: 'eq-uro-16', name: 'ไม้บรรทัด URO', category: 'ตู้ Uro + Ob-gyn', active: true }
 ];
 
-const getFormattedDate = (daysOffset = 0) => {
-    const d = new Date();
-    d.setDate(d.getDate() + daysOffset);
-    return d.toISOString().split('T')[0];
-};
-
-const INITIAL_BORROW_RECORDS = [
-    {
-        id: 'REQ-1001',
-        borrowerName: 'à¸™à¸ž.à¸ªà¸¡à¸Šà¸²à¸¢ à¸§à¸´à¹€à¸¨à¸©à¸¨à¸´à¸£à¸´',
-        orRoom: 'OR 3',
-        requestDate: getFormattedDate(0),
-        requestTime: '08:15',
-        usageDate: getFormattedDate(0),
-        expectedReturnDate: getFormattedDate(1),
-        actualReturnDate: null,
-        instruments: [
-            { name: 'Army-Navy', qty: 2, category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›' },
-            { name: 'Set Major Surgery (à¹€à¸‹à¹‡à¸•à¸œà¹ˆà¸²à¸•à¸±à¸”à¹ƒà¸«à¸à¹ˆ)', qty: 1, category: 'Set à¹€à¸„à¸£à¸·à¹ˆà¸­à¸‡à¸¡à¸·à¸­' },
-            { name: 'Mosquito Forceps', qty: 4, category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›' },
-            { name: 'Set à¸œà¹‰à¸²à¸œà¹ˆà¸²à¸•à¸±à¸”à¸—à¸±à¹ˆà¸§à¹„à¸› (General Drape Set)', qty: 1, category: 'Set à¹€à¸„à¸£à¸·à¹ˆà¸­à¸‡à¸œà¹‰à¸²' }
-        ],
-        status: 'pending',
-        prepStatusText: 'à¸­à¸¢à¸¹à¹ˆà¸£à¸°à¸«à¸§à¹ˆà¸²à¸‡à¸ˆà¸±à¸”à¹€à¸•à¸£à¸µà¸¢à¸¡',
-        condition: '',
-        notes: 'à¹€à¸„à¸ªà¸œà¹ˆà¸²à¸•à¸±à¸”à¸£à¸­à¸šà¹€à¸Šà¹‰à¸² OR 3',
-        createdAt: new Date(Date.now() - 3600000).toISOString()
-    },
-    {
-        id: 'REQ-1002',
-        borrowerName: 'à¸žà¸¢.à¸§à¸´à¸ à¸² à¸ªà¸¸à¸‚à¸ªà¸£à¸£à¸„à¹Œ',
-        orRoom: 'OR 7',
-        requestDate: getFormattedDate(0),
-        requestTime: '09:30',
-        usageDate: getFormattedDate(0),
-        expectedReturnDate: getFormattedDate(0),
-        actualReturnDate: null,
-        instruments: [
-            { name: 'Set Laparoscopy Instrument (à¹€à¸‹à¹‡à¸•à¸à¸¥à¹‰à¸­à¸‡à¸ªà¹ˆà¸­à¸‡à¸œà¹ˆà¸²à¸•à¸±à¸”)', qty: 1, category: 'Set à¹€à¸„à¸£à¸·à¹ˆà¸­à¸‡à¸¡à¸·à¸­' },
-            { name: 'Harmonic Scalpel Handpiece', qty: 1, category: 'à¸•à¸¹à¹‰ General' },
-            { name: 'Deaver', qty: 2, category: 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›' }
-        ],
-        status: 'ready',
-        prepStatusText: 'à¸ˆà¸±à¸”à¹€à¸•à¸£à¸µà¸¢à¸¡à¹€à¸ªà¸£à¹‡à¸ˆà¹à¸¥à¹‰à¸§ (à¸žà¸£à¹‰à¸­à¸¡à¸¡à¸²à¸£à¸±à¸š)',
-        condition: '',
-        notes: 'à¸œà¹ˆà¸²à¸•à¸±à¸”à¸ªà¹ˆà¸­à¸‡à¸à¸¥à¹‰à¸­à¸‡à¸–à¸¸à¸‡à¸™à¹‰à¸³à¸”à¸µ',
-        createdAt: new Date(Date.now() - 1800000).toISOString()
-    },
-    {
-        id: 'REQ-1003',
-        borrowerName: 'à¸žà¸.à¸¨à¸´à¸£à¸´à¸™à¸—à¸£à¹Œ à¸™à¸£à¸´à¸™à¸—à¸£à¹Œà¸¤à¸—à¸˜à¸´à¹Œ',
-        orRoom: 'OR 15',
-        requestDate: getFormattedDate(-1),
-        requestTime: '14:20',
-        usageDate: getFormattedDate(-1),
-        expectedReturnDate: getFormattedDate(0),
-        actualReturnDate: getFormattedDate(0),
-        instruments: [
-            { name: 'Set à¸œà¹ˆà¸²à¸•à¸±à¸”à¸—à¸³à¸„à¸¥à¸­à¸” C-Section', qty: 1, category: 'à¸•à¸¹à¹‰ Ob-gyn' },
-            { name: 'Tenaculum Forceps', qty: 2, category: 'à¸•à¸¹à¹‰ Ob-gyn' },
-            { name: 'Vaginal Speculum (Graves/Pederson)', qty: 1, category: 'à¸•à¸¹à¹‰ Ob-gyn' }
-        ],
-        status: 'returned',
-        prepStatusText: 'à¸„à¸·à¸™à¹€à¸£à¸µà¸¢à¸šà¸£à¹‰à¸­à¸¢à¹à¸¥à¹‰à¸§',
-        condition: 'à¸›à¸à¸•à¸´ (Complete)',
-        notes: 'à¹€à¸„à¸ªà¸ªà¸¹à¸•à¸´à¸™à¸£à¸µà¹€à¸§à¸Š OR 15 - à¸„à¸·à¸™à¹€à¸£à¸µà¸¢à¸šà¸£à¹‰à¸­à¸¢',
-        createdAt: new Date(Date.now() - 86400000).toISOString()
-    }
-];
-
-// --------------------------------------------------------------------------
-// 2. Global State Variables & Firebase Initialization
-// --------------------------------------------------------------------------
-const firebaseConfig = {
-  apiKey: "AIzaSyDVxJxGGqMLgVgcjPSQ7LxZDJQDTJPPOCU",
-  authDomain: "borrow-systems-9.firebaseapp.com",
-  databaseURL: "https://borrow-systems-9-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "borrow-systems-9",
-  storageBucket: "borrow-systems-9.firebasestorage.app",
-  messagingSenderId: "537901451536",
-  appId: "1:537901451536:web:4871a796e7548e8405fd95",
-  measurementId: "G-BL72XTYYR2"
-};
-
-let db = null;
-try {
-    if (typeof firebase !== 'undefined') {
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
-        }
-        db = firebase.database();
-        console.log("ðŸŸ¢ Firebase Realtime Database Initialized Successfully!");
-    }
-} catch (err) {
-    console.error("ðŸ”´ Firebase initialization error:", err);
-}
-
+// Global State
 let equipmentList = [];
 let borrowRecords = [];
-let currentFilterStatus = 'pending';
-let currentSearchQuery = '';
-let currentFilterOrRoom = '';
-let currentDatePreset = 'all';
-
-// Time Sorting State: 'asc' = à¸¢à¸·à¹ˆà¸™à¸ªà¹ˆà¸‡à¸à¹ˆà¸­à¸™à¸‚à¸¶à¹‰à¸™à¸à¹ˆà¸­à¸™ (FIFO Queue for Staff), 'desc' = à¸ªà¹ˆà¸‡à¸¥à¹ˆà¸²à¸ªà¸¸à¸”à¸‚à¸¶à¹‰à¸™à¸à¹ˆà¸­à¸™
-let timeSortDirection = 'asc';
+let currentFilter = { status: 'all', datePreset: 'all', dateExact: '', search: '', orRoom: '' };
+let isTimeSortDesc = true;
 
 // --------------------------------------------------------------------------
-// 3. Initialization & Real-time Synchronization (Firebase + LocalStorage)
+// 2. App Initialization & Real-time Listeners (v10 Auto-healing)
 // --------------------------------------------------------------------------
 document.addEventListener('DOMContentLoaded', () => {
     initApp();
@@ -698,68 +619,79 @@ document.addEventListener('DOMContentLoaded', () => {
             if (snap.val() === true) {
                 if (badge) {
                     badge.className = 'firebase-badge connected';
-                    badge.innerHTML = '<i class="fa-solid fa-cloud-check"></i> <span>à¸­à¸­à¸™à¹„à¸¥à¸™à¹Œ (Firebase)</span>';
+                    badge.innerHTML = '<i class="fa-solid fa-cloud-check"></i> <span>ออนไลน์ (Firebase)</span>';
                 }
             } else {
                 if (badge) {
                     badge.className = 'firebase-badge pending';
-                    badge.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> <span>à¸à¸³à¸¥à¸±à¸‡à¹€à¸Šà¸·à¹ˆà¸­à¸¡à¸•à¹ˆà¸­...</span>';
+                    badge.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> <span>กำลังเชื่อมต่อ...</span>';
                 }
             }
         });
 
-        // Listen to real-time updates from Firebase Database
+        // Sync Borrow Records
         db.ref('borrow_records').on('value', (snapshot) => {
             const data = snapshot.val();
             if (data && Array.isArray(data)) {
                 borrowRecords = data;
-                localStorage.setItem('surgical_borrow_records_v9', JSON.stringify(borrowRecords));
-                renderBorrowTable();
-                updateStatistics();
+                localStorage.setItem('surgical_borrow_records_v10', JSON.stringify(borrowRecords));
+                if (typeof renderBorrowTable === 'function') renderBorrowTable();
+                if (typeof updateStatistics === 'function') updateStatistics();
+            } else if (!data) {
+                borrowRecords = [];
+                saveRecordsToStorage();
             }
-        }, (err) => {
-            console.error("Firebase records read error:", err);
+        }, (error) => {
+            console.error("Firebase Records listener error:", error);
             const badge = document.getElementById('firebase-status-badge');
             if (badge) {
                 badge.className = 'firebase-badge error';
-                badge.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> <span>à¸•à¸´à¸”à¸ªà¸´à¸—à¸˜à¸´à¹Œ Firebase</span>';
+                badge.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> <span>ติดสิทธิ์ Firebase</span>';
             }
         });
 
+        // Sync Equipment Items with Auto-healing
         db.ref('equipment_items').on('value', (snapshot) => {
             const data = snapshot.val();
             if (data && Array.isArray(data)) {
-                equipmentList = data;
-                let updated = false;
-                INITIAL_EQUIPMENT_LIST.forEach(initItem => {
-                    if (!equipmentList.some(item => item.id === initItem.id || item.name === initItem.name)) {
-                        equipmentList.push(initItem);
-                        updated = true;
-                    }
-                });
-                localStorage.setItem('surgical_equipment_items_v9', JSON.stringify(equipmentList));
-                if (updated && db) {
-                    db.ref('equipment_items').set(equipmentList);
+                const isCorrupted = data.some(item => item.category && (item.category.includes('à') || item.category.includes('?')));
+                if (isCorrupted || data.length < 50) {
+                    equipmentList = [...INITIAL_EQUIPMENT_LIST];
+                    if (db) db.ref('equipment_items').set(equipmentList);
+                } else {
+                    equipmentList = data;
+                    let updated = false;
+                    INITIAL_EQUIPMENT_LIST.forEach(initItem => {
+                        if (!equipmentList.some(item => item.id === initItem.id || item.name === initItem.name)) {
+                            equipmentList.push(initItem);
+                            updated = true;
+                        }
+                    });
+                    if (updated && db) db.ref('equipment_items').set(equipmentList);
                 }
+                localStorage.setItem('surgical_equipment_items_v10', JSON.stringify(equipmentList));
+                if (typeof renderBorrowTable === 'function') renderBorrowTable();
             } else if (!data) {
                 equipmentList = [...INITIAL_EQUIPMENT_LIST];
-                saveEquipmentToStorage();
+                localStorage.setItem('surgical_equipment_items_v10', JSON.stringify(equipmentList));
+                if (typeof renderBorrowTable === 'function') renderBorrowTable();
             }
         });
     } else {
         const badge = document.getElementById('firebase-status-badge');
         if (badge) {
             badge.className = 'firebase-badge error';
-            badge.innerHTML = '<i class="fa-solid fa-plug-circle-xmark"></i> <span>à¹„à¸¡à¹ˆà¹„à¸”à¹‰à¹€à¸Šà¸·à¹ˆà¸­à¸¡ Firebase</span>';
+            badge.innerHTML = '<i class="fa-solid fa-plug-circle-xmark"></i> <span>ไม่ได้เชื่อม Firebase</span>';
         }
     }
 
+    // Listen to LocalStorage updates from Prep Room (index.html)
     // Listen to real-time submission from status.html on same browser/device
     window.addEventListener('storage', (e) => {
-        if (e.key === 'surgical_borrow_records_v9' || e.key === 'surgical_equipment_items_v9') {
+        if (e.key === 'surgical_borrow_records_v10' || e.key === 'surgical_equipment_items_v10') {
             loadStateFromStorage();
-            renderBorrowTable();
-            updateStatistics();
+            if (typeof renderBorrowTable === 'function') renderBorrowTable();
+            if (typeof updateStatistics === 'function') updateStatistics();
         }
     });
 });
@@ -773,436 +705,481 @@ function initApp() {
 }
 
 function loadStateFromStorage() {
-    const savedEq = localStorage.getItem('surgical_equipment_items_v9');
+    const savedEq = localStorage.getItem('surgical_equipment_items_v10');
     if (savedEq) {
-        equipmentList = JSON.parse(savedEq);
-        let updated = false;
-        INITIAL_EQUIPMENT_LIST.forEach(initItem => {
-            if (!equipmentList.some(item => item.id === initItem.id || item.name === initItem.name)) {
-                equipmentList.push(initItem);
-                updated = true;
+        try {
+            equipmentList = JSON.parse(savedEq);
+            const isCorrupted = equipmentList.some(item => item.category && (item.category.includes('à') || item.category.includes('?')));
+            if (isCorrupted || equipmentList.length < 50) {
+                equipmentList = JSON.parse(JSON.stringify(INITIAL_EQUIPMENT_LIST));
+                saveEquipmentToStorage();
             }
-        });
-        if (updated) saveEquipmentToStorage();
+        } catch (e) {
+            equipmentList = JSON.parse(JSON.stringify(INITIAL_EQUIPMENT_LIST));
+            saveEquipmentToStorage();
+        }
     } else {
-        equipmentList = [...INITIAL_EQUIPMENT_LIST];
+        equipmentList = JSON.parse(JSON.stringify(INITIAL_EQUIPMENT_LIST));
         saveEquipmentToStorage();
     }
 
-    const savedRecords = localStorage.getItem('surgical_borrow_records_v9');
+    const savedRecords = localStorage.getItem('surgical_borrow_records_v10');
     if (savedRecords) {
-        borrowRecords = JSON.parse(savedRecords);
+        try {
+            borrowRecords = JSON.parse(savedRecords);
+        } catch (e) {
+            borrowRecords = [];
+        }
     } else {
-        borrowRecords = [...INITIAL_BORROW_RECORDS];
-        saveRecordsToStorage();
+        borrowRecords = [];
     }
 }
 
 function saveEquipmentToStorage() {
-    localStorage.setItem('surgical_equipment_items_v9', JSON.stringify(equipmentList));
-    if (db) {
-        db.ref('equipment_items').set(equipmentList).catch(err => console.warn("Firebase Equipment Sync Error:", err));
-    }
+    localStorage.setItem('surgical_equipment_items_v10', JSON.stringify(equipmentList));
 }
 
 function saveRecordsToStorage() {
-    localStorage.setItem('surgical_borrow_records_v9', JSON.stringify(borrowRecords));
+    localStorage.setItem('surgical_borrow_records_v10', JSON.stringify(borrowRecords));
     if (db) {
-        db.ref('borrow_records').set(borrowRecords).catch(err => console.warn("Firebase Records Sync Error:", err));
+        db.ref('borrowRecords').set(borrowRecords);
     }
 }
 
 function setupORRoomDropdowns() {
     const filterSelect = document.getElementById('or-room-filter');
-    let filterOptions = '<option value="">à¸—à¸¸à¸à¸«à¹‰à¸­à¸‡à¸œà¹ˆà¸²à¸•à¸±à¸” (OR 1 - 20)</option>';
-
+    if (!filterSelect) return;
+    
+    filterSelect.innerHTML = '<option value="">ทุกห้องผ่าตัด (OR 1 - 20)</option>';
     for (let i = 1; i <= 20; i++) {
-        const roomName = `OR ${i}`;
-        filterOptions += `<option value="${roomName}">${roomName}</option>`;
+        filterSelect.innerHTML += `<option value="OR ${i}">OR ${i}</option>`;
     }
-
-    if (filterSelect) filterSelect.innerHTML = filterOptions;
 }
 
-// --------------------------------------------------------------------------
-// 4. Sorting & Filtering Controls
-// --------------------------------------------------------------------------
-function toggleTimeSortOrder() {
-    timeSortDirection = (timeSortDirection === 'asc') ? 'desc' : 'asc';
-    
-    const label = document.getElementById('sort-time-label');
-    const icon = document.getElementById('sort-time-icon');
-
-    if (timeSortDirection === 'asc') {
-        if (label) label.innerText = 'à¹€à¸£à¸µà¸¢à¸‡à¸•à¸²à¸¡à¹€à¸§à¸¥à¸²: à¸¢à¸·à¹ˆà¸™à¸ªà¹ˆà¸‡à¸à¹ˆà¸­à¸™à¸‚à¸¶à¹‰à¸™à¸à¹ˆà¸­à¸™ (à¸„à¸´à¸§à¹à¸£à¸ FIFO)';
-        if (icon) icon.className = 'fa-solid fa-arrow-down-short-wide';
-        showToast('à¹€à¸›à¸¥à¸µà¹ˆà¸¢à¸™à¹€à¸›à¹‡à¸™à¹€à¸£à¸µà¸¢à¸‡à¸„à¸´à¸§: à¸œà¸¹à¹‰à¸¢à¸·à¹ˆà¸™à¹€à¸šà¸´à¸à¸à¹ˆà¸­à¸™à¸‚à¸¶à¹‰à¸™à¸à¹ˆà¸­à¸™ (FIFO)', 'success');
-    } else {
-        if (label) label.innerText = 'à¹€à¸£à¸µà¸¢à¸‡à¸•à¸²à¸¡à¹€à¸§à¸¥à¸²: à¸¢à¸·à¹ˆà¸™à¸ªà¹ˆà¸‡à¸¥à¹ˆà¸²à¸ªà¸¸à¸”à¸‚à¸¶à¹‰à¸™à¸à¹ˆà¸­à¸™ (Newest)';
-        if (icon) icon.className = 'fa-solid fa-arrow-up-wide-short';
-        showToast('à¹€à¸›à¸¥à¸µà¹ˆà¸¢à¸™à¹€à¸›à¹‡à¸™à¹€à¸£à¸µà¸¢à¸‡à¸„à¸´à¸§: à¸£à¸²à¸¢à¸à¸²à¸£à¹ƒà¸«à¸¡à¹ˆà¸¥à¹ˆà¸²à¸ªà¸¸à¸”à¸‚à¸¶à¹‰à¸™à¸à¹ˆà¸­à¸™', 'success');
-    }
-
+function setFilterStatus(status) {
+    currentFilter.status = status;
+    document.querySelectorAll('.segment-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.status === status);
+    });
     renderBorrowTable();
 }
 
-function setDatePreset(preset) {
-    currentDatePreset = preset;
-    const input = document.getElementById('date-filter-input');
-
-    const btns = document.querySelectorAll('.date-presets .btn-preset');
-    btns.forEach(btn => {
-        if (btn.getAttribute('data-preset') === preset) btn.classList.add('active');
-        else btn.classList.remove('active');
-    });
-
-    if (preset === 'today') {
-        if (input) input.value = getFormattedDate(0);
-    } else if (preset === 'yesterday') {
-        if (input) input.value = getFormattedDate(-1);
-    } else if (preset === 'all') {
-        if (input) input.value = '';
-    } else if (preset === '7days') {
-        if (input) input.value = '';
-    }
-
-    handleSearchFilter();
-}
-
-function matchesDateFilter(record, dateInputVal, preset) {
-    const targetDate = record.requestDate || record.usageDate || record.borrowDate;
-    if (!targetDate) return true;
-
-    if (dateInputVal) {
-        return targetDate === dateInputVal || record.usageDate === dateInputVal;
-    }
-
-    if (preset === 'today') {
-        const today = getFormattedDate(0);
-        return targetDate === today || record.usageDate === today;
-    } else if (preset === 'yesterday') {
-        const yest = getFormattedDate(-1);
-        return targetDate === yest || record.usageDate === yest;
-    } else if (preset === '7days') {
-        const recordTime = new Date(targetDate).getTime();
-        const sevenDaysAgo = new Date().getTime() - (7 * 86400000);
-        return recordTime >= sevenDaysAgo;
-    }
-
-    return true;
-}
-
 function handleSearchFilter() {
-    currentSearchQuery = document.getElementById('search-input').value.trim().toLowerCase();
-    currentFilterOrRoom = document.getElementById('or-room-filter').value;
+    let searchEl = document.getElementById('search-input');
+    let dateEl = document.getElementById('date-filter-input');
+    let orEl = document.getElementById('or-room-filter');
     
-    const clearBtn = document.getElementById('clear-search-btn');
-    if (clearBtn) {
-        clearBtn.style.display = currentSearchQuery ? 'block' : 'none';
+    if (searchEl) currentFilter.search = searchEl.value.trim().toLowerCase();
+    if (dateEl) currentFilter.dateExact = dateEl.value;
+    if (orEl) currentFilter.orRoom = orEl.value;
+    
+    let clearBtn = document.getElementById('clear-search-btn');
+    if (clearBtn) clearBtn.style.display = currentFilter.search ? 'block' : 'none';
+    
+    if (currentFilter.dateExact) {
+        currentFilter.datePreset = 'custom';
+        document.querySelectorAll('.btn-preset').forEach(btn => btn.classList.remove('active'));
     }
-
+    
     renderBorrowTable();
 }
 
 function clearSearch() {
-    document.getElementById('search-input').value = '';
+    let searchEl = document.getElementById('search-input');
+    if (searchEl) searchEl.value = '';
     handleSearchFilter();
 }
 
-function setFilterStatus(status) {
-    currentFilterStatus = status;
-    
-    const buttons = document.querySelectorAll('.segmented-control .segment-btn');
-    buttons.forEach(btn => {
-        if (btn.getAttribute('data-status') === status) {
-            btn.classList.add('active');
-        } else {
-            btn.classList.remove('active');
-        }
+function setDatePreset(preset) {
+    currentFilter.datePreset = preset;
+    document.querySelectorAll('.btn-preset').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.preset === preset);
     });
-
+    
+    if (preset !== 'custom') {
+        let dateEl = document.getElementById('date-filter-input');
+        if (dateEl) {
+            dateEl.value = '';
+        }
+        currentFilter.dateExact = '';
+    }
     renderBorrowTable();
 }
 
 function resetFilters() {
-    currentFilterStatus = 'pending';
-    currentSearchQuery = '';
-    currentFilterOrRoom = '';
-    currentDatePreset = 'all';
-    timeSortDirection = 'asc';
-
-    document.getElementById('search-input').value = '';
-    document.getElementById('or-room-filter').value = '';
-    document.getElementById('date-filter-input').value = '';
+    currentFilter = { status: 'all', datePreset: 'all', dateExact: '', search: '', orRoom: '' };
     
-    const btns = document.querySelectorAll('.date-presets .btn-preset');
-    btns.forEach(btn => {
-        if (btn.getAttribute('data-preset') === 'all') btn.classList.add('active');
-        else btn.classList.remove('active');
-    });
-
-    const label = document.getElementById('sort-time-label');
-    const icon = document.getElementById('sort-time-icon');
-    if (label) label.innerText = 'à¹€à¸£à¸µà¸¢à¸‡à¸•à¸²à¸¡à¹€à¸§à¸¥à¸²: à¸¢à¸·à¹ˆà¸™à¸ªà¹ˆà¸‡à¸à¹ˆà¸­à¸™à¸‚à¸¶à¹‰à¸™à¸à¹ˆà¸­à¸™ (à¸„à¸´à¸§à¹à¸£à¸ FIFO)';
-    if (icon) icon.className = 'fa-solid fa-arrow-down-short-wide';
-
-    setFilterStatus('pending');
+    let searchEl = document.getElementById('search-input');
+    let dateEl = document.getElementById('date-filter-input');
+    let orEl = document.getElementById('or-room-filter');
+    let clearBtn = document.getElementById('clear-search-btn');
+    
+    if (searchEl) searchEl.value = '';
+    if (dateEl) dateEl.value = '';
+    if (orEl) orEl.value = '';
+    if (clearBtn) clearBtn.style.display = 'none';
+    
+    document.querySelectorAll('.segment-btn').forEach(btn => btn.classList.remove('active'));
+    let allBtn = document.querySelector('.segment-btn[data-status="all"]');
+    if (allBtn) allBtn.classList.add('active');
+    
+    document.querySelectorAll('.btn-preset').forEach(btn => btn.classList.remove('active'));
+    let presetBtn = document.querySelector('.btn-preset[data-preset="all"]');
+    if (presetBtn) presetBtn.classList.add('active');
+    
+    renderBorrowTable();
 }
 
-function updatePrepStatus(recordId, newStatus) {
-    const record = borrowRecords.find(r => r.id === recordId);
-    if (!record) return;
-
-    record.status = newStatus;
-    if (newStatus === 'ready') {
-        record.prepStatusText = 'à¸ˆà¸±à¸”à¹€à¸•à¸£à¸µà¸¢à¸¡à¹€à¸ªà¸£à¹‡à¸ˆà¹à¸¥à¹‰à¸§ (à¸žà¸£à¹‰à¸­à¸¡à¸¡à¸²à¸£à¸±à¸š)';
-        showToast(`à¸šà¸±à¸™à¸—à¸¶à¸à¸à¸²à¸£à¸ˆà¸±à¸”à¹€à¸•à¸£à¸µà¸¢à¸¡à¸ªà¸³à¸«à¸£à¸±à¸š ${record.orRoom} à¹€à¸ªà¸£à¹‡à¸ˆà¹à¸¥à¹‰à¸§! à¸œà¸¹à¹‰à¹€à¸šà¸´à¸à¸ªà¸²à¸¡à¸²à¸£à¸–à¸¡à¸²à¸£à¸±à¸šà¹„à¸”à¹‰à¸—à¸±à¸™à¸—à¸µ`, 'success');
-    } else if (newStatus === 'pending') {
-        record.prepStatusText = 'à¸­à¸¢à¸¹à¹ˆà¸£à¸°à¸«à¸§à¹ˆà¸²à¸‡à¸ˆà¸±à¸”à¹€à¸•à¸£à¸µà¸¢à¸¡';
+function toggleTimeSortOrder() {
+    isTimeSortDesc = !isTimeSortDesc;
+    const icon = document.getElementById('sort-time-icon');
+    const label = document.getElementById('sort-time-label');
+    
+    if (isTimeSortDesc) {
+        if (icon) icon.className = 'fa-solid fa-arrow-up-short-wide';
+        if (label) label.textContent = 'เรียงตามเวลา: ยื่นส่งล่าสุดขึ้นก่อน (LIFO)';
+    } else {
+        if (icon) icon.className = 'fa-solid fa-arrow-down-short-wide';
+        if (label) label.textContent = 'เรียงตามเวลา: ยื่นส่งก่อนขึ้นก่อน (FIFO)';
     }
-
-    saveRecordsToStorage();
     renderBorrowTable();
-    updateStatistics();
 }
 
 function renderBorrowTable() {
     const tbody = document.getElementById('borrow-table-body');
     const emptyState = document.getElementById('empty-state');
-    const tableTitle = document.getElementById('table-title');
-    if (!tbody) return;
+    if (!tbody || !emptyState) return;
 
-    const todayStr = getFormattedDate(0);
-    const dateInputVal = document.getElementById('date-filter-input')?.value || '';
-
-    if (currentFilterStatus === 'pending') tableTitle.innerText = 'à¸£à¸²à¸¢à¸à¸²à¸£à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸µà¹ˆà¸­à¸¢à¸¹à¹ˆà¸£à¸°à¸«à¸§à¹ˆà¸²à¸‡à¸à¸²à¸£à¸ˆà¸±à¸”à¹€à¸•à¸£à¸µà¸¢à¸¡';
-    else if (currentFilterStatus === 'ready') tableTitle.innerText = 'à¸£à¸²à¸¢à¸à¸²à¸£à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸µà¹ˆà¸ˆà¸±à¸”à¹€à¸•à¸£à¸µà¸¢à¸¡à¹€à¸ªà¸£à¹‡à¸ˆà¹à¸¥à¹‰à¸§ (à¸žà¸£à¹‰à¸­à¸¡à¹ƒà¸«à¹‰à¸¡à¸²à¸£à¸±à¸š)';
-    else if (currentFilterStatus === 'overdue') tableTitle.innerText = 'à¸£à¸²à¸¢à¸à¸²à¸£à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸µà¹ˆà¹€à¸à¸´à¸™à¸à¸³à¸«à¸™à¸”à¸§à¸±à¸™à¸„à¸·à¸™ (Overdue)';
-    else if (currentFilterStatus === 'returned') tableTitle.innerText = 'à¸›à¸£à¸°à¸§à¸±à¸•à¸´à¸£à¸²à¸¢à¸à¸²à¸£à¸—à¸µà¹ˆà¸„à¸·à¸™à¹€à¸£à¸µà¸¢à¸šà¸£à¹‰à¸­à¸¢à¹à¸¥à¹‰à¸§';
-    else tableTitle.innerText = 'à¸£à¸²à¸¢à¸à¸²à¸£à¸›à¸£à¸°à¸§à¸±à¸•à¸´à¸à¸²à¸£à¹€à¸šà¸´à¸-à¸„à¸·à¸™à¹€à¸„à¸£à¸·à¹ˆà¸­à¸‡à¸¡à¸·à¸­à¸—à¸±à¹‰à¸‡à¸«à¸¡à¸”';
-
-    let filteredRecords = borrowRecords.filter(record => {
-        const isOverdue = record.status !== 'returned' && (record.expectedReturnDate || record.borrowDate) < todayStr;
+    let filtered = borrowRecords.filter(record => {
+        if (currentFilter.status !== 'all' && record.status !== currentFilter.status) return false;
         
-        if (currentFilterStatus === 'pending' && record.status !== 'pending') return false;
-        if (currentFilterStatus === 'ready' && record.status !== 'ready') return false;
-        if (currentFilterStatus === 'returned' && record.status !== 'returned') return false;
-        if (currentFilterStatus === 'overdue' && !isOverdue) return false;
-
-        if (currentFilterOrRoom && record.orRoom !== currentFilterOrRoom) return false;
-
-        if (!matchesDateFilter(record, dateInputVal, currentDatePreset)) return false;
-
-        if (currentSearchQuery) {
-            const nameMatch = record.borrowerName.toLowerCase().includes(currentSearchQuery);
-            const orMatch = record.orRoom.toLowerCase().includes(currentSearchQuery);
-            const instMatch = record.instruments.some(inst => 
-                (typeof inst === 'object' ? inst.name : inst).toLowerCase().includes(currentSearchQuery)
-            );
-            const idMatch = record.id.toLowerCase().includes(currentSearchQuery);
-            if (!nameMatch && !orMatch && !instMatch && !idMatch) return false;
+        const eqList = record.equipmentList || record.instruments || [];
+        const useDateStr = record.useDate || record.usageDate || '';
+        
+        if (currentFilter.search) {
+            const searchStr = `${record.borrowerName || ''} ${record.orRoom || ''} ${eqList.map(e => e.name || '').join(' ')}`.toLowerCase();
+            if (!searchStr.includes(currentFilter.search)) return false;
         }
-
+        
+        if (currentFilter.orRoom && record.orRoom !== currentFilter.orRoom) return false;
+        
+        if (currentFilter.dateExact || (currentFilter.datePreset && currentFilter.datePreset !== 'all')) {
+            if (!useDateStr) return false;
+            const recordDate = new Date(useDateStr);
+            recordDate.setHours(0,0,0,0);
+            const today = new Date();
+            today.setHours(0,0,0,0);
+            
+            if (currentFilter.dateExact) {
+                const exactDate = new Date(currentFilter.dateExact);
+                exactDate.setHours(0,0,0,0);
+                if (recordDate.getTime() !== exactDate.getTime()) return false;
+            } else if (currentFilter.datePreset === 'today') {
+                if (recordDate.getTime() !== today.getTime()) return false;
+            } else if (currentFilter.datePreset === 'yesterday') {
+                const yesterday = new Date(today);
+                yesterday.setDate(yesterday.getDate() - 1);
+                if (recordDate.getTime() !== yesterday.getTime()) return false;
+            } else if (currentFilter.datePreset === '7days') {
+                const sevenDaysAgo = new Date(today);
+                sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+                if (recordDate.getTime() < sevenDaysAgo.getTime() || recordDate.getTime() > today.getTime()) return false;
+            }
+        }
+        
         return true;
     });
 
-    filteredRecords.sort((a, b) => {
-        const timeA = new Date(a.createdAt || `${a.requestDate || a.borrowDate}T${a.requestTime || '00:00'}`).getTime();
-        const timeB = new Date(b.createdAt || `${b.requestDate || b.borrowDate}T${b.requestTime || '00:00'}`).getTime();
-        
-        if (timeSortDirection === 'asc') {
-            return timeA - timeB; // à¸¢à¸·à¹ˆà¸™à¸ªà¹ˆà¸‡à¸à¹ˆà¸­à¸™à¸‚à¸¶à¹‰à¸™à¸à¹ˆà¸­à¸™ (FIFO Queue)
-        } else {
-            return timeB - timeA;
-        }
+    filtered.sort((a, b) => {
+        const timeA = getRecordTimestamp(a);
+        const timeB = getRecordTimestamp(b);
+        return isTimeSortDesc ? timeB - timeA : timeA - timeB;
     });
 
-    if (filteredRecords.length === 0) {
-        tbody.innerHTML = '';
+    tbody.innerHTML = '';
+    if (filtered.length === 0) {
+        tbody.parentElement.parentElement.style.display = 'none';
         emptyState.style.display = 'block';
-        return;
-    }
-
-    emptyState.style.display = 'none';
-
-    tbody.innerHTML = filteredRecords.map(record => {
-        const isOverdue = record.status !== 'returned' && (record.expectedReturnDate || record.borrowDate) < todayStr;
+    } else {
+        tbody.parentElement.parentElement.style.display = 'block';
+        emptyState.style.display = 'none';
         
-        let statusBadgeHtml = '';
-        if (record.status === 'returned') {
-            statusBadgeHtml = `<span class="status-badge returned"><i class="fa-solid fa-circle-check"></i> à¸„à¸·à¸™à¹à¸¥à¹‰à¸§</span>`;
-        } else if (record.status === 'ready') {
-            statusBadgeHtml = `<span class="status-badge ready"><i class="fa-solid fa-circle-check"></i> à¸ˆà¸±à¸”à¹€à¸ªà¸£à¹‡à¸ˆà¹à¸¥à¹‰à¸§ (à¸žà¸£à¹‰à¸­à¸¡à¸£à¸±à¸š)</span>`;
-        } else if (isOverdue) {
-            statusBadgeHtml = `<span class="status-badge overdue"><i class="fa-solid fa-triangle-exclamation"></i> à¹€à¸à¸´à¸™à¸à¸³à¸«à¸™à¸”à¸„à¸·à¸™</span>`;
-        } else {
-            statusBadgeHtml = `<span class="status-badge pending"><i class="fa-solid fa-boxes-packing"></i> à¸­à¸¢à¸¹à¹ˆà¸£à¸°à¸«à¸§à¹ˆà¸²à¸‡à¸ˆà¸±à¸”à¹€à¸•à¸£à¸µà¸¢à¸¡</span>`;
-        }
-
-        const instrumentPillsHtml = record.instruments.map(inst => {
-            if (typeof inst === 'object') {
-                return `<span class="equipment-pill">${escapeHtml(inst.name)} <span class="qty-badge">x${inst.qty}</span></span>`;
-            } else {
-                return `<span class="equipment-pill">${escapeHtml(inst)} <span class="qty-badge">x1</span></span>`;
-            }
-        }).join('');
-
-        const reqDateStr = formatThaiDate(record.requestDate || record.borrowDate);
-        const reqTimeStr = record.requestTime ? `${record.requestTime} à¸™.` : '';
-
-        const usageDateStr = formatThaiDate(record.usageDate || record.borrowDate);
-        const retDateStr = formatThaiDate(record.expectedReturnDate || record.borrowDate);
-
-        const actionBtnsHtml = `
-            <div class="table-actions-cell">
-                ${record.status === 'pending' ? `
-                    <button class="btn-ready-action btn-sm" onclick="updatePrepStatus('${record.id}', 'ready')">
-                        <i class="fa-solid fa-check"></i> à¸ˆà¸±à¸”à¹€à¸ªà¸£à¹‡à¸ˆà¹à¸¥à¹‰à¸§ (à¸žà¸£à¹‰à¸­à¸¡à¸£à¸±à¸š)
+        filtered.forEach(record => {
+            const tr = document.createElement('tr');
+            
+            const eqList = record.equipmentList || record.instruments || [];
+            let eqHtml = eqList.map(eq => {
+                const qty = eq.quantity || eq.qty || 1;
+                return `<span class="equipment-pill">${escapeHtml(eq.name)} <span class="qty-badge">${qty}</span></span>`;
+            }).join('');
+            
+            let statusHtml = '';
+            if (record.status === 'pending') statusHtml = '<span class="status-badge pending"><i class="fa-solid fa-clock"></i> อยู่ระหว่างจัดเตรียม</span>';
+            else if (record.status === 'ready') statusHtml = '<span class="status-badge ready"><i class="fa-solid fa-check-circle"></i> จัดเสร็จแล้ว</span>';
+            else if (record.status === 'borrowed') statusHtml = '<span class="status-badge overdue"><i class="fa-solid fa-hand-holding-hand"></i> ถูกยืมไปแล้ว</span>';
+            else if (record.status === 'returned') statusHtml = '<span class="status-badge returned"><i class="fa-solid fa-rotate-left"></i> คืนแล้ว</span>';
+            
+            let actionBtns = '';
+            let printBtn = `<button class="btn-outline btn-sm" onclick="printBorrowDocument('${record.id}')" title="พิมพ์ใบจัดเตรียม"><i class="fa-solid fa-print"></i></button>`;
+            
+            if (record.status === 'pending') {
+                actionBtns = `
+                    <button class="btn-ready-action" onclick="updateRecordStatus('${record.id}', 'ready')">
+                        <i class="fa-solid fa-check"></i> จัดเตรียมเรียบร้อย
                     </button>
-                ` : ''}
-
-                <button class="btn-outline btn-sm" onclick="printBorrowChecklist('${record.id}')" title="à¸žà¸´à¸¡à¸žà¹Œà¹ƒà¸šà¸ˆà¸±à¸”à¹€à¸•à¸£à¸µà¸¢à¸¡à¹€à¸„à¸£à¸·à¹ˆà¸­à¸‡à¸¡à¸·à¸­">
-                    <i class="fa-solid fa-print"></i> à¸žà¸´à¸¡à¸žà¹Œ Checklist
-                </button>
-
-                ${record.status !== 'returned' ? `
+                    ${printBtn}
+                `;
+            } else if (record.status === 'ready') {
+                actionBtns = `
+                    <button class="btn-primary btn-sm" onclick="updateRecordStatus('${record.id}', 'borrowed')">
+                        <i class="fa-solid fa-hand-holding-hand"></i> จ่ายอุปกรณ์
+                    </button>
+                    ${printBtn}
+                `;
+            } else if (record.status === 'borrowed') {
+                actionBtns = `
                     <button class="btn-success btn-sm" onclick="openReturnModal('${record.id}')">
-                        <i class="fa-solid fa-hand-holding-medical"></i> à¸£à¸±à¸šà¸„à¸·à¸™
+                        <i class="fa-solid fa-rotate-left"></i> รับคืน
                     </button>
-                ` : `
-                    <button class="btn-secondary btn-sm" onclick="viewRecordDetails('${record.id}')">
-                        <i class="fa-solid fa-circle-info"></i> à¸£à¸²à¸¢à¸¥à¸°à¹€à¸­à¸µà¸¢à¸”
+                    ${printBtn}
+                `;
+            } else if (record.status === 'returned') {
+                actionBtns = `
+                    <button class="btn-danger btn-sm" onclick="deleteBorrowRecord('${record.id}')">
+                        <i class="fa-solid fa-trash-can"></i>
                     </button>
-                `}
-            </div>
-        `;
+                    ${printBtn}
+                `;
+            }
 
-        return `
-            <tr>
-                <td><span class="or-badge"><i class="fa-solid fa-door-closed"></i> ${escapeHtml(record.orRoom)}</span></td>
+            const createdTimeStr = getRecordTimeFormatted(record);
+            const useDateStr = record.useDate || record.usageDate;
+            const returnDateStr = record.returnDate || record.expectedReturnDate;
+
+            tr.innerHTML = `
+                <td><span class="or-badge">${record.orRoom}</span></td>
                 <td>
-                    <strong>${escapeHtml(record.borrowerName)}</strong>
-                    <div style="font-size:0.75rem; color:var(--text-muted);">${record.id}</div>
+                    <div class="borrower-name-cell">${escapeHtml(record.borrowerName)}</div>
+                    ${record.employeeId ? `<div class="borrower-id-sub">ID: ${escapeHtml(record.employeeId)}</div>` : ''}
                 </td>
-                <td><div class="equipment-tags-list">${instrumentPillsHtml}</div></td>
-                <td>
-                    <div>${reqDateStr}</div>
-                    <div style="font-size:0.85rem; color:var(--primary); font-weight:700;"><i class="fa-solid fa-clock"></i> ${reqTimeStr}</div>
+                <td><div class="equipment-tags-list">${eqHtml}</div></td>
+                <td>${createdTimeStr}</td>
+                <td>${formatDateThai(useDateStr)}</td>
+                <td>${formatDateThai(returnDateStr)}</td>
+                <td>${statusHtml}</td>
+                <td style="text-align: right;">
+                    <div class="table-actions-cell" style="justify-content: flex-end;">
+                        ${actionBtns}
+                    </div>
                 </td>
-                <td><strong style="color:var(--text-primary);">${usageDateStr}</strong></td>
-                <td><span class="${isOverdue ? 'text-danger font-bold' : ''}">${retDateStr}</span></td>
-                <td>${statusBadgeHtml}</td>
-                <td>${actionBtnsHtml}</td>
-            </tr>
-        `;
-    }).join('');
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+    updateStatistics();
+}
+
+function getRecordTimestamp(record) {
+    if (record.createdAt) return new Date(record.createdAt).getTime();
+    if (record.requestDate) {
+        const timeStr = record.requestTime || '00:00';
+        return new Date(`${record.requestDate}T${timeStr}`).getTime();
+    }
+    return 0;
+}
+
+function getRecordTimeFormatted(record) {
+    if (record.createdAt) return formatDateThaiTime(record.createdAt);
+    if (record.requestDate) {
+        const timeStr = record.requestTime ? ` เวลา ${record.requestTime} น.` : '';
+        return `${formatDateThai(record.requestDate)}${timeStr}`;
+    }
+    return '-';
 }
 
 function updateStatistics() {
-    const todayStr = getFormattedDate(0);
+    let statPending = 0;
+    let statReady = 0;
+    let statOverdue = 0;
+    let statTotal = borrowRecords.length;
 
-    const totalCount = borrowRecords.length;
-    const pendingCount = borrowRecords.filter(r => r.status === 'pending').length;
-    const readyCount = borrowRecords.filter(r => r.status === 'ready').length;
-    const overdueCount = borrowRecords.filter(r => r.status !== 'returned' && (r.expectedReturnDate || r.borrowDate) < todayStr).length;
+    borrowRecords.forEach(record => {
+        if (record.status === 'pending') statPending++;
+        else if (record.status === 'ready') statReady++;
+        else if (record.status === 'borrowed') {
+            const today = new Date();
+            today.setHours(0,0,0,0);
+            const returnDateStr = record.returnDate || record.expectedReturnDate;
+            if (returnDateStr) {
+                const returnDate = new Date(returnDateStr);
+                returnDate.setHours(0,0,0,0);
+                if (returnDate < today) {
+                    statOverdue++;
+                }
+            }
+        }
+    });
 
-    document.getElementById('stat-total').innerText = totalCount;
-    document.getElementById('stat-pending').innerText = pendingCount;
-    document.getElementById('stat-ready').innerText = readyCount;
-    document.getElementById('stat-overdue').innerText = overdueCount;
+    if (document.getElementById('stat-total')) document.getElementById('stat-total').textContent = statTotal;
+    if (document.getElementById('stat-pending')) document.getElementById('stat-pending').textContent = statPending;
+    if (document.getElementById('stat-ready')) document.getElementById('stat-ready').textContent = statReady;
+    if (document.getElementById('stat-overdue')) document.getElementById('stat-overdue').textContent = statOverdue;
 }
 
-// --------------------------------------------------------------------------
-// 5. Printable Checklist Feature
-// --------------------------------------------------------------------------
-function printBorrowChecklist(recordId) {
-    const record = borrowRecords.find(r => r.id === recordId);
-    if (!record) return;
+function updateRecordStatus(recordId, newStatus) {
+    const index = borrowRecords.findIndex(r => r.id === recordId);
+    if (index !== -1) {
+        borrowRecords[index].status = newStatus;
+        saveRecordsToStorage();
+        renderBorrowTable();
+        updateStatistics();
+    }
+}
 
+function deleteBorrowRecord(recordId) {
+    if (confirm('คุณต้องการลบประวัติการยืมนี้ใช่หรือไม่?')) {
+        borrowRecords = borrowRecords.filter(r => r.id !== recordId);
+        saveRecordsToStorage();
+        renderBorrowTable();
+        updateStatistics();
+    }
+}
+
+let currentReturnRecordId = null;
+function openReturnModal(id) {
+    currentReturnRecordId = id;
+    const record = borrowRecords.find(r => r.id === id);
+    if (!record) return;
+    
+    const eqList = record.equipmentList || record.instruments || [];
+    document.getElementById('return-summary-box').innerHTML = `
+        <p><strong>ผู้เบิก:</strong> ${escapeHtml(record.borrowerName)} <strong>OR:</strong> ${record.orRoom}</p>
+        <p><strong>รายการ:</strong> ${eqList.map(e => `${e.name} (${e.qty || e.quantity || 1})`).join(', ')}</p>
+    `;
+    
+    document.getElementById('actual-return-date').value = new Date().toISOString().split('T')[0];
+    document.getElementById('return-modal').style.display = 'flex';
+}
+
+function closeReturnModal() {
+    document.getElementById('return-modal').style.display = 'none';
+    currentReturnRecordId = null;
+}
+
+function confirmReturnSubmit(e) {
+    e.preventDefault();
+    if (!currentReturnRecordId) return;
+    updateRecordStatus(currentReturnRecordId, 'returned');
+    closeReturnModal();
+}
+
+let qrCodeInstance = null;
+
+function openQRCodeModal() {
+    const modal = document.getElementById('qrcode-modal');
+    if (modal) modal.style.display = 'flex';
+
+    const qrContainer = document.getElementById('qrcode-canvas');
+    if (qrContainer) {
+        qrContainer.innerHTML = '';
+        
+        let targetUrl = window.location.href;
+        if (targetUrl.includes('index.html')) {
+            targetUrl = targetUrl.replace('index.html', 'status.html');
+        } else {
+            const lastSlash = targetUrl.lastIndexOf('/');
+            targetUrl = targetUrl.substring(0, lastSlash + 1) + 'status.html';
+        }
+
+        if (typeof QRCode !== 'undefined') {
+            try {
+                qrCodeInstance = new QRCode(qrContainer, {
+                    text: targetUrl,
+                    width: 200,
+                    height: 200,
+                    colorDark: "#0284c7",
+                    colorLight: "#ffffff",
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+            } catch (e) {
+                console.error("QRCode JS error:", e);
+                renderFallbackQR(qrContainer, targetUrl);
+            }
+        } else {
+            renderFallbackQR(qrContainer, targetUrl);
+        }
+    }
+}
+
+function renderFallbackQR(container, url) {
+    const apiQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}&color=0284c7`;
+    container.innerHTML = `<img src="${apiQrUrl}" alt="QR Code" style="width:200px; height:200px; border-radius:12px; margin: 0 auto; display: block; box-shadow:0 4px 12px rgba(0,0,0,0.1);">`;
+}
+
+function closeQRCodeModal() {
+    document.getElementById('qrcode-modal').style.display = 'none';
+}
+
+function printQRCode() {
+    window.print();
+}
+
+let currentPrintRecordId = null;
+function printBorrowDocument(id) {
+    currentPrintRecordId = id;
+    const record = borrowRecords.find(r => r.id === id);
+    if (!record) return;
+    
     const container = document.getElementById('printable-checklist-container');
     if (!container) return;
-
-    const itemsRowsHtml = record.instruments.map((inst, idx) => {
-        const name = typeof inst === 'object' ? inst.name : inst;
-        const qty = typeof inst === 'object' ? inst.qty : 1;
-        const cat = typeof inst === 'object' ? (inst.category || 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›') : 'à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸±à¹ˆà¸§à¹„à¸›';
-
-        return `
-            <tr>
-                <td style="text-align:center; width: 60px;"><span class="print-check-box"></span></td>
-                <td style="width: 140px; font-weight: 500; color: #475569;">${escapeHtml(cat)}</td>
-                <td><strong style="font-size:0.95rem; color:#0f172a;">${escapeHtml(name)}</strong></td>
-                <td style="text-align:center; width: 90px;"><span class="print-qty-badge">${qty} à¸Šà¸´à¹‰à¸™</span></td>
-                <td style="width: 160px; color:#94a3b8; font-size: 0.8rem;">[ à¸«à¸¡à¸²à¸¢à¹€à¸«à¸•à¸¸à¸à¸²à¸£à¸ˆà¸±à¸” ]</td>
-            </tr>
-        `;
-    }).join('');
-
-    const totalItemsCount = record.instruments.length;
-    const totalUnitsCount = record.instruments.reduce((sum, inst) => sum + (typeof inst === 'object' ? inst.qty : 1), 0);
-
-    const reqDateStr = `${formatThaiDate(record.requestDate || record.borrowDate)} ${record.requestTime ? 'à¹€à¸§à¸¥à¸² ' + record.requestTime + ' à¸™.' : ''}`;
-    const usageDateStr = formatThaiDate(record.usageDate || record.borrowDate);
-    const retDateStr = formatThaiDate(record.expectedReturnDate || record.borrowDate);
+    
+    const eqList = record.equipmentList || record.instruments || [];
+    let eqListHtml = eqList.map(eq => `
+        <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed #ccc; padding: 0.5rem 0;">
+            <span><i class="fa-regular fa-square"></i> ${eq.name}</span>
+            <span>${eq.qty || eq.quantity || 1} ชิ้น</span>
+        </div>
+    `).join('');
+    
+    const useDateStr = record.useDate || record.usageDate;
+    const returnDateStr = record.returnDate || record.expectedReturnDate;
 
     container.innerHTML = `
         <div class="print-doc-header">
             <div class="print-header-brand">
-                <i class="fa-solid fa-kit-medical"></i>
+                <i class="fa-solid fa-hospital"></i>
                 <div>
-                    <h2>à¹ƒà¸šà¸ˆà¸±à¸”à¹€à¸•à¸£à¸µà¸¢à¸¡à¹€à¸„à¸£à¸·à¹ˆà¸­à¸‡à¸¡à¸·à¸­à¸œà¹ˆà¸²à¸•à¸±à¸” (Equipment Prep Checklist)</h2>
-                    <p>à¸«à¸™à¹ˆà¸§à¸¢à¸‡à¸²à¸™à¸ˆà¸±à¸”à¹€à¸•à¸£à¸µà¸¢à¸¡à¹à¸¥à¸°à¹€à¸šà¸´à¸à¸ˆà¹ˆà¸²à¸¢à¹€à¸„à¸£à¸·à¹ˆà¸­à¸‡à¸¡à¸·à¸­à¸œà¹ˆà¸²à¸•à¸±à¸” / OR Prep Room</p>
+                    <h2>ใบจัดเตรียมเครื่องมือผ่าตัด</h2>
+                    <p>Surgical Equipment Prep Checklist</p>
                 </div>
             </div>
             <div class="print-doc-ref">
-                <div class="print-or-badge">${escapeHtml(record.orRoom)}</div>
-                <div class="print-ref-id">à¹ƒà¸šà¸„à¸³à¸‚à¸­à¹€à¸šà¸´à¸à¹€à¸¥à¸‚à¸—à¸µà¹ˆ: ${record.id}</div>
+                <div class="print-or-badge">${record.orRoom}</div>
+                <div class="print-ref-id">REF: ${record.id.substring(0,8)}</div>
             </div>
         </div>
-
         <div class="print-info-grid">
-            <div class="print-info-item"><span class="label">à¸Šà¸·à¹ˆà¸­-à¸™à¸²à¸¡à¸ªà¸à¸¸à¸¥ à¸œà¸¹à¹‰à¹€à¸šà¸´à¸:</span> <span class="value font-bold">${escapeHtml(record.borrowerName)}</span></div>
-            <div class="print-info-item"><span class="label">à¹€à¸šà¸­à¸£à¹Œà¸«à¹‰à¸­à¸‡à¸œà¹ˆà¸²à¸•à¸±à¸”:</span> <span class="value font-bold">${escapeHtml(record.orRoom)}</span></div>
-            <div class="print-info-item"><span class="label">à¸§à¸±à¸™à¸—à¸µà¹ˆ & à¹€à¸§à¸¥à¸²à¸—à¸µà¹ˆà¸¢à¸·à¹ˆà¸™à¹€à¸šà¸´à¸:</span> <span class="value font-bold" style="color:#0284c7;">${reqDateStr}</span></div>
-            <div class="print-info-item"><span class="label">à¸§à¸±à¸™à¸—à¸µà¹ˆà¹ƒà¸Šà¹‰à¸­à¸¸à¸›à¸à¸£à¸“à¹Œ:</span> <span class="value">${usageDateStr}</span></div>
-            <div class="print-info-item"><span class="label">à¸à¸³à¸«à¸™à¸”à¸§à¸±à¸™à¸—à¸µà¹ˆà¸„à¸·à¸™:</span> <span class="value">${retDateStr}</span></div>
-            <div class="print-info-item"><span class="label">à¸«à¸¡à¸²à¸¢à¹€à¸«à¸•à¸¸à¸„à¸³à¸‚à¸­:</span> <span class="value">${escapeHtml(record.notes || '- à¹„à¸¡à¹ˆà¸¡à¸µ -')}</span></div>
+            <div class="print-info-item"><span class="label">ชื่อผู้เบิก:</span><span class="value">${escapeHtml(record.borrowerName)}</span></div>
+            <div class="print-info-item"><span class="label">รหัสพนักงาน:</span><span class="value">${escapeHtml(record.employeeId || '-')}</span></div>
+            <div class="print-info-item"><span class="label">วันที่ใช้:</span><span class="value">${formatDateThai(useDateStr)}</span></div>
+            <div class="print-info-item"><span class="label">กำหนดคืน:</span><span class="value">${formatDateThai(returnDateStr)}</span></div>
         </div>
-
-        <div style="margin-bottom:0.6rem; display:flex; justify-content:space-between; font-weight:600; font-size:0.9rem;">
-            <span>à¸£à¸²à¸¢à¸à¸²à¸£à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸µà¹ˆà¸•à¹‰à¸­à¸‡à¹€à¸‚à¹‰à¸²à¹„à¸›à¸ˆà¸±à¸”à¹€à¸•à¸£à¸µà¸¢à¸¡à¹ƒà¸™à¸„à¸¥à¸±à¸‡ (${totalItemsCount} à¸£à¸²à¸¢à¸à¸²à¸£ / à¸£à¸§à¸¡à¸—à¸±à¹‰à¸‡à¸ªà¸´à¹‰à¸™ ${totalUnitsCount} à¸Šà¸´à¹‰à¸™):</span>
-            <span style="color:#0284c7;">* à¸žà¸™à¸±à¸à¸‡à¸²à¸™à¸ˆà¸±à¸”à¸‚à¸­à¸‡à¹€à¸£à¸µà¸¢à¸‡à¸•à¸²à¸¡à¹€à¸§à¸¥à¸²à¸—à¸µà¹ˆà¸¢à¸·à¹ˆà¸™à¸ªà¹ˆà¸‡à¹€à¸šà¸´à¸à¹€à¸‚à¹‰à¸²à¸¡à¸²</span>
+        <div style="margin-top: 1.5rem;">
+            <h4 style="margin-bottom: 1rem; border-bottom: 1px solid #000; padding-bottom: 0.5rem;">รายการเครื่องมือ (Checklist)</h4>
+            ${eqListHtml}
         </div>
-
-        <table class="print-checklist-table">
-            <thead>
-                <tr>
-                    <th style="text-align:center;">[ âœ“ ] à¸ˆà¸±à¸”à¹à¸¥à¹‰à¸§</th>
-                    <th>à¸«à¸¡à¸§à¸”à¸«à¸¡à¸¹à¹ˆ</th>
-                    <th>à¸£à¸²à¸¢à¸à¸²à¸£à¹€à¸„à¸£à¸·à¹ˆà¸­à¸‡à¸¡à¸·à¸­à¸œà¹ˆà¸²à¸•à¸±à¸”</th>
-                    <th style="text-align:center;">à¸ˆà¸³à¸™à¸§à¸™</th>
-                    <th>à¸«à¸¡à¸²à¸¢à¹€à¸«à¸•à¸¸ / à¸ªà¸ à¸²à¸ž</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${itemsRowsHtml}
-            </tbody>
-        </table>
-
-        <div class="print-signatures-footer">
-            <div class="signature-box">
-                <div class="signature-line"></div>
-                <div>( ................................................................ )</div>
-                <div>à¹€à¸ˆà¹‰à¸²à¸«à¸™à¹‰à¸²à¸—à¸µà¹ˆà¸œà¸¹à¹‰à¸ˆà¸±à¸”à¹€à¸•à¸£à¸µà¸¢à¸¡à¸­à¸¸à¸›à¸à¸£à¸“à¹Œ (Prep Staff)</div>
+        <div style="margin-top: 3rem; display: flex; justify-content: space-between; text-align: center;">
+            <div>
+                <p>_________________________</p>
+                <p>ผู้จัดเตรียม (ผู้จ่าย)</p>
             </div>
-            <div class="signature-box">
-                <div class="signature-line"></div>
-                <div>( ................................................................ )</div>
-                <div>à¹€à¸ˆà¹‰à¸²à¸«à¸™à¹‰à¸²à¸—à¸µà¹ˆà¸œà¸¹à¹‰à¸•à¸£à¸§à¸ˆà¹€à¸Šà¹‡à¸„ / à¸œà¸¹à¹‰à¸£à¸±à¸šà¸¡à¸­à¸š (Inspector/Receiver)</div>
+            <div>
+                <p>_________________________</p>
+                <p>ผู้รับอุปกรณ์ (ผู้เบิก)</p>
             </div>
         </div>
     `;
-
+    
     document.getElementById('checklist-print-modal').style.display = 'flex';
 }
 
@@ -1214,200 +1191,132 @@ function triggerChecklistPrint() {
     window.print();
 }
 
-// --------------------------------------------------------------------------
-// 6. Return Modal
-// --------------------------------------------------------------------------
-function openReturnModal(recordId) {
-    const record = borrowRecords.find(r => r.id === recordId);
-    if (!record) return;
-
-    document.getElementById('return-borrow-id').value = record.id;
-    document.getElementById('actual-return-date').value = getFormattedDate(0);
-    document.getElementById('return-notes').value = '';
-
-    const itemsSummary = record.instruments.map(inst => {
-        if (typeof inst === 'object') return `${inst.name} (x${inst.qty})`;
-        return inst;
-    }).join(', ');
-
-    const summaryBox = document.getElementById('return-summary-box');
-    summaryBox.innerHTML = `
-        <div style="margin-bottom:0.4rem;"><strong>à¸£à¸«à¸±à¸ªà¸£à¸²à¸¢à¸à¸²à¸£:</strong> ${record.id}</div>
-        <div style="margin-bottom:0.4rem;"><strong>à¸«à¹‰à¸­à¸‡à¸œà¹ˆà¸²à¸•à¸±à¸”:</strong> ${record.orRoom}</div>
-        <div style="margin-bottom:0.4rem;"><strong>à¸œà¸¹à¹‰à¹€à¸šà¸´à¸:</strong> ${escapeHtml(record.borrowerName)}</div>
-        <div style="margin-bottom:0.4rem;"><strong>à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸µà¹ˆà¹€à¸šà¸´à¸:</strong> ${itemsSummary}</div>
-        <div><strong>à¸¢à¸·à¹ˆà¸™à¹€à¸šà¸´à¸à¹€à¸¡à¸·à¹ˆà¸­:</strong> ${formatThaiDate(record.requestDate || record.borrowDate)} (${record.requestTime || '-'}) | <strong>à¸§à¸±à¸™à¸—à¸µà¹ˆà¹ƒà¸Šà¹‰:</strong> ${formatThaiDate(record.usageDate || record.borrowDate)}</div>
-    `;
-
-    document.getElementById('return-modal').style.display = 'flex';
-}
-
-function closeReturnModal() {
-    document.getElementById('return-modal').style.display = 'none';
-}
-
-function confirmReturnSubmit(event) {
-    event.preventDefault();
-
-    const id = document.getElementById('return-borrow-id').value;
-    const actualReturnDate = document.getElementById('actual-return-date').value;
-    const condition = document.getElementById('equipment-condition').value;
-    const returnNotes = document.getElementById('return-notes').value.trim();
-
-    const index = borrowRecords.findIndex(r => r.id === id);
-    if (index !== -1) {
-        borrowRecords[index].status = 'returned';
-        borrowRecords[index].prepStatusText = 'à¸„à¸·à¸™à¹€à¸£à¸µà¸¢à¸šà¸£à¹‰à¸­à¸¢à¹à¸¥à¹‰à¸§';
-        borrowRecords[index].actualReturnDate = actualReturnDate;
-        borrowRecords[index].condition = condition;
-        if (returnNotes) {
-            borrowRecords[index].notes = (borrowRecords[index].notes ? borrowRecords[index].notes + ' | ' : '') + 'à¸«à¸¡à¸²à¸¢à¹€à¸«à¸•à¸¸à¸à¸²à¸£à¸„à¸·à¸™: ' + returnNotes;
-        }
-
-        saveRecordsToStorage();
-        closeReturnModal();
-        renderBorrowTable();
-        updateStatistics();
-
-        showToast(`à¸šà¸±à¸™à¸—à¸¶à¸à¸à¸²à¸£à¸£à¸±à¸šà¸„à¸·à¸™à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸ªà¸³à¸«à¸£à¸±à¸š ${borrowRecords[index].orRoom} à¹€à¸£à¸µà¸¢à¸šà¸£à¹‰à¸­à¸¢à¹à¸¥à¹‰à¸§!`, 'success');
-    }
-}
-
-function viewRecordDetails(recordId) {
-    const record = borrowRecords.find(r => r.id === recordId);
-    if (!record) return;
-
-    const itemsSummary = record.instruments.map(inst => {
-        if (typeof inst === 'object') return `${inst.name} (x${inst.qty})`;
-        return inst;
-    }).join('\n- ');
-
-    alert(`[à¸£à¸²à¸¢à¸¥à¸°à¹€à¸­à¸µà¸¢à¸”à¸£à¸²à¸¢à¸à¸²à¸£ ${record.id}]\nà¸œà¸¹à¹‰à¹€à¸šà¸´à¸: ${record.borrowerName}\nà¸«à¹‰à¸­à¸‡à¸œà¹ˆà¸²à¸•à¸±à¸”: ${record.orRoom}\nà¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸—à¸µà¹ˆà¹€à¸šà¸´à¸:\n- ${itemsSummary}\nà¸§à¸±à¸™à¸—à¸µà¹ˆà¹à¸¥à¸°à¹€à¸§à¸¥à¸²à¸—à¸µà¹ˆà¸¢à¸·à¹ˆà¸™à¹€à¸šà¸´à¸à¹ƒà¸™à¸£à¸°à¸šà¸š: ${record.requestDate || record.borrowDate} (${record.requestTime || '-'} à¸™.)\nà¸§à¸±à¸™à¸—à¸µà¹ˆà¹ƒà¸Šà¹‰à¸­à¸¸à¸›à¸à¸£à¸“à¹Œ: ${record.usageDate || record.borrowDate}\nà¸à¸³à¸«à¸™à¸”à¸§à¸±à¸™à¸—à¸µà¹ˆà¸„à¸·à¸™: ${record.expectedReturnDate || record.borrowDate}\nà¸§à¸±à¸™à¸—à¸µà¹ˆà¸„à¸·à¸™à¸ˆà¸£à¸´à¸‡: ${record.actualReturnDate || '-'}\nà¸ªà¸ à¸²à¸žà¹€à¸¡à¸·à¹ˆà¸­à¸„à¸·à¸™: ${record.condition || '-'}\nà¸«à¸¡à¸²à¸¢à¹€à¸«à¸•à¸¸: ${record.notes || '-'}`);
-}
-
-// --------------------------------------------------------------------------
-// 7. QR Code Modal (Generates link to status.html)
-// --------------------------------------------------------------------------
-function openQRCodeModal() {
-    const modal = document.getElementById('qrcode-modal');
-    const container = document.getElementById('qrcode-canvas');
-    container.innerHTML = '';
-
-    // Direct QR Code URL specifically pointing to status.html
-    let targetUrl = window.location.href;
-    if (targetUrl.includes('index.html')) {
-        targetUrl = targetUrl.replace('index.html', 'status.html');
-    } else {
-        const lastSlash = targetUrl.lastIndexOf('/');
-        targetUrl = targetUrl.substring(0, lastSlash + 1) + 'status.html';
-    }
-
-    if (typeof QRCode !== 'undefined') {
-        new QRCode(container, {
-            text: targetUrl,
-            width: 180,
-            height: 180,
-            colorDark: "#0284c7",
-            colorLight: "#ffffff",
-            correctLevel: QRCode.CorrectLevel.H
-        });
-    } else {
-        container.innerText = "à¹„à¸¡à¹ˆà¸ªà¸²à¸¡à¸²à¸£à¸–à¹‚à¸«à¸¥à¸” QR Code Generator à¹„à¸”à¹‰";
-    }
-
-    modal.style.display = 'flex';
-}
-
-function closeQRCodeModal() {
-    document.getElementById('qrcode-modal').style.display = 'none';
-}
-
-function printQRCode() {
-    window.print();
-}
-
-// --------------------------------------------------------------------------
-// 8. Equipment Manager Modal
-// --------------------------------------------------------------------------
 function openEquipmentManager() {
-    renderEquipmentManagerTable();
-    document.getElementById('equipment-manager-modal').style.display = 'flex';
+    const modal = document.getElementById('equipment-manager-modal');
+    if (modal) modal.style.display = 'flex';
+    renderEquipmentManageTable();
 }
 
 function closeEquipmentManager() {
     document.getElementById('equipment-manager-modal').style.display = 'none';
 }
 
-function renderEquipmentManagerTable() {
-    const tbody = document.getElementById('equipment-manager-table-body');
+function renderEquipmentManageTable() {
+    const tbody = document.getElementById('equipment-manager-table-body') || document.getElementById('equipment-table-body');
     if (!tbody) return;
 
-    tbody.innerHTML = equipmentList.map((item, idx) => `
-        <tr>
-            <td>${idx + 1}</td>
-            <td><span class="equipment-pill">${escapeHtml(item.category)}</span></td>
-            <td><strong>${escapeHtml(item.name)}</strong></td>
+    if (!equipmentList || equipmentList.length === 0) {
+        equipmentList = [...INITIAL_EQUIPMENT_LIST];
+    }
+
+    let filtered = equipmentList;
+    if (currentFilter && currentFilter.category && currentFilter.category !== 'all') {
+        filtered = equipmentList.filter(eq => eq.category === currentFilter.category);
+    }
+
+    tbody.innerHTML = '';
+    filtered.forEach((eq, idx) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td style="font-weight:600; color:var(--text-muted);">${idx + 1}</td>
+            <td><span class="equipment-pill">${escapeHtml(eq.category)}</span></td>
+            <td style="font-weight:600;">${escapeHtml(eq.name)}</td>
             <td>
-                <span class="status-badge ${item.active ? 'ready' : 'overdue'}">
-                    ${item.active ? 'à¹€à¸›à¸´à¸”à¹ƒà¸Šà¹‰à¸‡à¸²à¸™' : 'à¸›à¸´à¸”à¹ƒà¸Šà¹‰à¸‡à¸²à¸™'}
-                </span>
+                <label class="switch">
+                    <input type="checkbox" ${eq.active !== false ? 'checked' : ''} onchange="toggleEquipmentActive('${eq.id}')">
+                    <span class="slider round"></span>
+                </label>
             </td>
             <td>
-                <button class="btn-secondary btn-sm" onclick="toggleEquipmentStatus('${item.id}')">
-                    ${item.active ? 'à¸›à¸´à¸”à¹ƒà¸Šà¹‰à¸‡à¸²à¸™' : 'à¹€à¸›à¸´à¸”à¹ƒà¸Šà¹‰à¸‡à¸²à¸™'}
-                </button>
-                <button class="btn-danger btn-sm" onclick="deleteEquipment('${item.id}')">
-                    <i class="fa-solid fa-trash"></i>
-                </button>
+                <button type="button" class="btn-danger btn-sm" onclick="deleteEquipment('${eq.id}')" title="ลบรายการ"><i class="fa-solid fa-trash-can"></i></button>
             </td>
-        </tr>
-    `).join('');
+        `;
+        tbody.appendChild(tr);
+    });
 }
 
-function handleAddEquipment(event) {
-    event.preventDefault();
-    const input = document.getElementById('new-eq-name');
-    const categorySelect = document.getElementById('new-eq-category');
-    const name = input.value.trim();
-    const category = categorySelect.value;
-
-    if (!name) return;
-
-    const newItem = {
-        id: `eq-${Date.now()}`,
-        name,
-        category,
-        active: true
-    };
-
-    equipmentList.push(newItem);
-    saveEquipmentToStorage();
-    input.value = '';
-    renderEquipmentManagerTable();
-    showToast(`à¹€à¸žà¸´à¹ˆà¸¡à¹€à¸„à¸£à¸·à¹ˆà¸­à¸‡à¸¡à¸·à¸­ "${name}" à¹ƒà¸™à¸«à¸¡à¸§à¸” "${category}" à¸ªà¸³à¹€à¸£à¹‡à¸ˆ`, 'success');
-}
-
-function toggleEquipmentStatus(id) {
-    const item = equipmentList.find(e => e.id === id);
-    if (item) {
-        item.active = !item.active;
+function handleAddEquipment(e) {
+    e.preventDefault();
+    const name = document.getElementById('new-eq-name').value.trim();
+    const category = document.getElementById('new-eq-category').value;
+    
+    if (name) {
+        equipmentList.push({
+            id: 'eq-' + Date.now(),
+            name: name,
+            category: category,
+            active: true
+        });
         saveEquipmentToStorage();
-        renderEquipmentManagerTable();
+        document.getElementById('new-eq-name').value = '';
+        renderEquipmentManageTable();
+    }
+}
+
+function toggleEquipmentActive(id) {
+    const index = equipmentList.findIndex(e => e.id === id);
+    if (index !== -1) {
+        equipmentList[index].active = (equipmentList[index].active === false) ? true : false;
+        saveEquipmentToStorage();
     }
 }
 
 function deleteEquipment(id) {
-    if (confirm('à¸„à¸¸à¸“à¸•à¹‰à¸­à¸‡à¸à¸²à¸£à¸¥à¸šà¸£à¸²à¸¢à¸à¸²à¸£à¹€à¸„à¸£à¸·à¹ˆà¸­à¸‡à¸¡à¸·à¸­à¸™à¸µà¹‰à¹ƒà¸Šà¹ˆà¸«à¸£à¸·à¸­à¹„à¸¡à¹ˆ?')) {
+    if (confirm('ยืนยันการลบรายการเครื่องมือนี้?')) {
         equipmentList = equipmentList.filter(e => e.id !== id);
         saveEquipmentToStorage();
-        renderEquipmentManagerTable();
-        showToast('à¸¥à¸šà¸£à¸²à¸¢à¸à¸²à¸£à¹€à¸„à¸£à¸·à¹ˆà¸­à¸‡à¸¡à¸·à¸­à¹€à¸£à¸µà¸¢à¸šà¸£à¹‰à¸­à¸¢à¹à¸¥à¹‰à¸§', 'success');
+        renderEquipmentManageTable();
     }
 }
 
-// --------------------------------------------------------------------------
-// 9. Backup, Restore & Excel Export
-// --------------------------------------------------------------------------
+function formatDateThai(dateStr) {
+    if (!dateStr) return '-';
+    const date = new Date(dateStr);
+    const months = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+    return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear() + 543}`;
+}
+
+function formatDateThaiTime(dateStr) {
+    if (!dateStr) return '-';
+    const date = new Date(dateStr);
+    return `${formatDateThai(dateStr)} เวลา ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')} น.`;
+}
+
+function exportToExcel() {
+    let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+    csvContent += "ID,ชื่อผู้เบิก,ห้องผ่าตัด,วันที่ใช้งาน,สถานะ\n";
+    
+    borrowRecords.forEach(function(rowArray) {
+        let row = `${rowArray.id},"${rowArray.borrowerName}","${rowArray.orRoom}","${rowArray.useDate}","${rowArray.status}"`;
+        csvContent += row + "\r\n";
+    });
+    
+    var encodedUri = encodeURI(csvContent);
+    var link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "borrow_data.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+function setupThemeFromPreferences() {
+    const savedTheme = localStorage.getItem('surgical_theme');
+    if (savedTheme === 'dark') {
+        document.body.classList.add('dark-theme');
+    }
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+         .replace(/&/g, "&amp;")
+         .replace(/</g, "&lt;")
+         .replace(/>/g, "&gt;")
+         .replace(/"/g, "&quot;")
+         .replace(/'/g, "&#039;");
+}
+
 function openBackupModal() {
     document.getElementById('backup-modal').style.display = 'flex';
 }
@@ -1416,171 +1325,60 @@ function closeBackupModal() {
     document.getElementById('backup-modal').style.display = 'none';
 }
 
-function exportDataJSON() {
-    const dataPayload = {
-        version: '9.0',
-        exportedAt: new Date().toISOString(),
-        equipmentList,
-        borrowRecords
+function exportBackupJSON() {
+    const data = {
+        equipment: equipmentList,
+        records: borrowRecords,
+        exportDate: new Date().toISOString()
     };
-
-    const jsonStr = JSON.stringify(dataPayload, null, 2);
-    const blob = new Blob([jsonStr], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Surgical_Equipment_Backup_${getFormattedDate(0)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    showToast('à¸”à¸²à¸§à¸™à¹Œà¹‚à¸«à¸¥à¸”à¹„à¸Ÿà¸¥à¹Œ JSON Backup à¸ªà¸³à¹€à¸£à¹‡à¸ˆ', 'success');
+    
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data, null, 2));
+    const dlAnchorElem = document.createElement('a');
+    dlAnchorElem.setAttribute("href", dataStr);
+    dlAnchorElem.setAttribute("download", "surgical_system_backup_" + new Date().getTime() + ".json");
+    dlAnchorElem.click();
+    dlAnchorElem.remove();
 }
 
-function importDataJSON(event) {
+function importBackupJSON(event) {
     const file = event.target.files[0];
     if (!file) return;
-
+    
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = function (e) {
         try {
-            const data = JSON.parse(e.target.result);
-            if (data.equipmentList && data.borrowRecords) {
-                equipmentList = data.equipmentList;
-                borrowRecords = data.borrowRecords;
+            const contents = JSON.parse(e.target.result);
+            if (contents.equipment && contents.records) {
+                equipmentList = contents.equipment;
+                borrowRecords = contents.records;
                 saveEquipmentToStorage();
                 saveRecordsToStorage();
-                initApp();
-                closeBackupModal();
-                showToast('à¸™à¸³à¹€à¸‚à¹‰à¸²à¸‚à¹‰à¸­à¸¡à¸¹à¸¥à¸ªà¸³à¹€à¸£à¹‡à¸ˆà¹€à¸£à¸µà¸¢à¸šà¸£à¹‰à¸­à¸¢à¹à¸¥à¹‰à¸§!', 'success');
+                alert('นำเข้าข้อมูลสำเร็จ');
+                location.reload();
             } else {
-                showToast('à¸£à¸¹à¸›à¹à¸šà¸šà¹„à¸Ÿà¸¥à¹Œ JSON à¹„à¸¡à¹ˆà¸–à¸¹à¸à¸•à¹‰à¸­à¸‡', 'danger');
+                alert('ไฟล์ไม่ถูกต้อง');
             }
         } catch (err) {
-            showToast('à¹€à¸à¸´à¸”à¸‚à¹‰à¸­à¸œà¸´à¸”à¸žà¸¥à¸²à¸”à¹ƒà¸™à¸à¸²à¸£à¸­à¹ˆà¸²à¸™à¹„à¸Ÿà¸¥à¹Œ JSON', 'danger');
+            alert('เกิดข้อผิดพลาดในการอ่านไฟล์');
         }
     };
     reader.readAsText(file);
 }
 
-function exportToExcel() {
-    if (typeof XLSX === 'undefined') {
-        showToast('à¹„à¸¡à¹ˆà¸žà¸šà¹„à¸¥à¸šà¸£à¸²à¸£à¸µà¸ªà¹ˆà¸‡à¸­à¸­à¸ Excel', 'danger');
-        return;
-    }
-
-    const dateInputVal = document.getElementById('date-filter-input')?.value || '';
-
-    const exportRecords = borrowRecords.filter(record => matchesDateFilter(record, dateInputVal, currentDatePreset));
-
-    const excelData = exportRecords.map((r, index) => {
-        const itemSummary = r.instruments.map(inst => {
-            if (typeof inst === 'object') return `${inst.name} (${inst.category}) x${inst.qty}`;
-            return inst;
-        }).join('; ');
-
-        return {
-            'à¸¥à¸³à¸”à¸±à¸š': index + 1,
-            'à¸£à¸«à¸±à¸ªà¸£à¸²à¸¢à¸à¸²à¸£': r.id,
-            'à¸«à¹‰à¸­à¸‡à¸œà¹ˆà¸²à¸•à¸±à¸”': r.orRoom,
-            'à¸Šà¸·à¹ˆà¸­-à¸™à¸²à¸¡à¸ªà¸à¸¸à¸¥ à¸œà¸¹à¹‰à¹€à¸šà¸´à¸': r.borrowerName,
-            'à¸£à¸²à¸¢à¸à¸²à¸£à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¹à¸¥à¸°à¸ˆà¸³à¸™à¸§à¸™': itemSummary,
-            'à¸§à¸±à¸™à¸—à¸µà¹ˆà¸¢à¸·à¹ˆà¸™à¸ªà¹ˆà¸‡à¹€à¸šà¸´à¸': r.requestDate || r.borrowDate,
-            'à¹€à¸§à¸¥à¸²à¸—à¸µà¹ˆà¸¢à¸·à¹ˆà¸™à¸ªà¹ˆà¸‡à¹€à¸šà¸´à¸': r.requestTime ? `${r.requestTime} à¸™.` : '-',
-            'à¸§à¸±à¸™à¸—à¸µà¹ˆà¹ƒà¸Šà¹‰à¸­à¸¸à¸›à¸à¸£à¸“à¹Œ': r.usageDate || r.borrowDate,
-            'à¸à¸³à¸«à¸™à¸”à¸§à¸±à¸™à¸—à¸µà¹ˆà¸ªà¹ˆà¸‡à¸„à¸·à¸™': r.expectedReturnDate || r.borrowDate,
-            'à¸§à¸±à¸™à¸—à¸µà¹ˆà¸„à¸·à¸™à¸ˆà¸£à¸´à¸‡': r.actualReturnDate || '-',
-            'à¸ªà¸–à¸²à¸™à¸°à¸à¸²à¸£à¸ˆà¸±à¸”à¹€à¸•à¸£à¸µà¸¢à¸¡': r.status === 'ready' ? 'à¸ˆà¸±à¸”à¹€à¸ªà¸£à¹‡à¸ˆà¹à¸¥à¹‰à¸§ (à¸žà¸£à¹‰à¸­à¸¡à¸£à¸±à¸š)' : (r.status === 'returned' ? 'à¸„à¸·à¸™à¹à¸¥à¹‰à¸§' : 'à¸­à¸¢à¸¹à¹ˆà¸£à¸°à¸«à¸§à¹ˆà¸²à¸‡à¸ˆà¸±à¸”à¹€à¸•à¸£à¸µà¸¢à¸¡'),
-            'à¸ªà¸ à¸²à¸žà¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¹€à¸¡à¸·à¹ˆà¸­à¸„à¸·à¸™': r.condition || '-',
-            'à¸«à¸¡à¸²à¸¢à¹€à¸«à¸•à¸¸': r.notes || '-'
-        };
-    });
-
-    const worksheet = XLSX.utils.json_to_sheet(excelData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'à¸›à¸£à¸°à¸§à¸±à¸•à¸´à¹€à¸šà¸´à¸-à¸„à¸·à¸™à¹€à¸„à¸£à¸·à¹ˆà¸­à¸‡à¸¡à¸·à¸­à¸œà¹ˆà¸²à¸•à¸±à¸”');
-
-    XLSX.writeFile(workbook, `à¸£à¸²à¸¢à¸‡à¸²à¸™à¸à¸²à¸£à¹€à¸šà¸´à¸à¸„à¸·à¸™à¹€à¸„à¸£à¸·à¹ˆà¸­à¸‡à¸¡à¸·à¸­à¸œà¹ˆà¸²à¸•à¸±à¸”_${getFormattedDate(0)}.xlsx`);
-    showToast(`à¸”à¸²à¸§à¸™à¹Œà¹‚à¸«à¸¥à¸”à¹„à¸Ÿà¸¥à¹Œà¸£à¸²à¸¢à¸‡à¸²à¸™ Excel (${exportRecords.length} à¸£à¸²à¸¢à¸à¸²à¸£) à¹€à¸£à¸µà¸¢à¸šà¸£à¹‰à¸­à¸¢à¹à¸¥à¹‰à¸§`, 'success');
-}
-
 function resetToInitialSampleData() {
-    if (confirm('à¸„à¸¸à¸“à¸•à¹‰à¸­à¸‡à¸à¸²à¸£à¸¥à¹‰à¸²à¸‡à¸‚à¹‰à¸­à¸¡à¸¹à¸¥à¹à¸¥à¸°à¸„à¸·à¸™à¸„à¹ˆà¸²à¸•à¸±à¹‰à¸‡à¸•à¹‰à¸™à¹ƒà¸Šà¹ˆà¸«à¸£à¸·à¸­à¹„à¸¡à¹ˆ?')) {
-        equipmentList = [...INITIAL_EQUIPMENT_LIST];
-        borrowRecords = [...INITIAL_BORROW_RECORDS];
-        saveEquipmentToStorage();
-        saveRecordsToStorage();
-        initApp();
-        closeBackupModal();
-        showToast('à¸£à¸µà¹€à¸‹à¹‡à¸•à¸‚à¹‰à¸­à¸¡à¸¹à¸¥à¸£à¸°à¸šà¸šà¸à¸¥à¸±à¸šà¸ªà¸¹à¹ˆà¸„à¹ˆà¸²à¸•à¸±à¹‰à¸‡à¸•à¹‰à¸™à¹à¸¥à¹‰à¸§', 'success');
+    if (confirm('คำเตือน: คุณต้องการล้างข้อมูลประวัติการยืมทั้งหมด และรีเซ็ตรายการอุปกรณ์เป็นค่าเริ่มต้นหรือไม่?\n(การกระทำนี้ไม่สามารถยกเลิกได้)')) {
+        const prompt = window.prompt("พิมพ์คำว่า 'CONFIRM' เพื่อยืนยันการล้างข้อมูล");
+        if (prompt === 'CONFIRM') {
+            borrowRecords = [];
+            equipmentList = JSON.parse(JSON.stringify(INITIAL_EQUIPMENT_LIST));
+            
+            saveRecordsToStorage();
+            saveEquipmentToStorage();
+            
+            alert('ล้างข้อมูลและรีเซ็ตระบบเรียบร้อยแล้ว');
+            location.reload();
+        } else {
+            alert('การยืนยันไม่ถูกต้อง ยกเลิกการล้างข้อมูล');
+        }
     }
 }
-
-// --------------------------------------------------------------------------
-// 10. Helpers
-// --------------------------------------------------------------------------
-function showToast(message, type = 'success') {
-    const container = document.getElementById('toast-container');
-    if (!container) return;
-
-    const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
-    toast.innerHTML = `
-        <i class="${type === 'success' ? 'fa-solid fa-circle-check' : 'fa-solid fa-triangle-exclamation'}"></i>
-        <span>${escapeHtml(message)}</span>
-    `;
-
-    container.appendChild(toast);
-
-    setTimeout(() => {
-        toast.style.opacity = '0';
-        toast.style.transform = 'translateX(30px)';
-        setTimeout(() => toast.remove(), 300);
-    }, 3500);
-}
-
-function formatThaiDate(dateString) {
-    if (!dateString) return '-';
-    const parts = dateString.split('-');
-    if (parts.length !== 3) return dateString;
-
-    const year = parseInt(parts[0]) + 543;
-    const monthNames = ['à¸¡.à¸„.', 'à¸.à¸ž.', 'à¸¡à¸µ.à¸„.', 'à¹€à¸¡.à¸¢.', 'à¸ž.à¸„.', 'à¸¡à¸´.à¸¢.', 'à¸.à¸„.', 'à¸ª.à¸„.', 'à¸.à¸¢.', 'à¸•.à¸„.', 'à¸ž.à¸¢.', 'à¸˜.à¸„.'];
-    const month = monthNames[parseInt(parts[1]) - 1];
-    const day = parseInt(parts[2]);
-
-    return `${day} ${month} ${year}`;
-}
-
-function escapeHtml(str) {
-    if (!str) return '';
-    return str.replace(/[&<>"']/g, (m) => ({
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#39;'
-    })[m]);
-}
-
-function setupThemeFromPreferences() {
-    const savedTheme = localStorage.getItem('theme_preference');
-    const themeIcon = document.getElementById('theme-icon');
-
-    if (savedTheme === 'dark') {
-        document.body.classList.add('dark-mode');
-        if (themeIcon) themeIcon.className = 'fa-solid fa-sun';
-    }
-}
-
-function toggleTheme() {
-    const isDark = document.body.classList.toggle('dark-mode');
-    const themeIcon = document.getElementById('theme-icon');
-
-    if (isDark) {
-        localStorage.setItem('theme_preference', 'dark');
-        if (themeIcon) themeIcon.className = 'fa-solid fa-sun';
-    } else {
-        localStorage.setItem('theme_preference', 'light');
-        if (themeIcon) themeIcon.className = 'fa-solid fa-moon';
-    }
-}
-
