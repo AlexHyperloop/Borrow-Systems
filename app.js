@@ -930,12 +930,7 @@ function renderBorrowTable() {
                     ${printBtn}
                 `;
             } else if (record.status === 'ready') {
-                actionBtns = `
-                    <button class="btn-primary btn-sm" onclick="updateRecordStatus('${record.id}', 'borrowed')">
-                        <i class="fa-solid fa-hand-holding-hand"></i> จ่ายอุปกรณ์
-                    </button>
-                    ${printBtn}
-                `;
+                actionBtns = printBtn;
             } else if (record.status === 'borrowed') {
                 actionBtns = `
                     <button class="btn-success btn-sm" onclick="openReturnModal('${record.id}')">

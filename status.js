@@ -888,11 +888,75 @@ function updateFormCartSummary() {
     if (totalQtyEl) totalQtyEl.textContent = totalQty;
 }
 
+let selectedOptions = {};
+
+function getItemOptions(item) {
+    if (item.options && Array.isArray(item.options)) return item.options;
+    
+    const name = item.name || '';
+    
+    if (name.toLowerCase().includes('kerrison') || name.toLowerCase().includes('kerison')) {
+        return ['2 mm', '3 mm', '4 mm', '5 mm'];
+    }
+    
+    if (name.includes('1.1/1.5')) {
+        return ['1.1 mm', '1.5 mm', '2.0 mm', '2.5 mm', '2.7 mm'];
+    }
+    if (name.includes('3.2/3.5/4.5/6.0')) {
+        return ['3.2 mm', '3.5 mm', '4.5 mm', '6.0 mm'];
+    }
+    if (name.includes('2.5/3.5')) {
+        return ['2.5 mm', '3.5 mm'];
+    }
+    if (name.includes('13mm/8.5mm')) {
+        return ['13 mm', '8.5 mm'];
+    }
+    if (name.includes('3.5 / 4.5')) {
+        return ['3.5 mm', '4.5 mm'];
+    }
+
+    if (name.includes(' / ') || (name.includes('/') && !name.includes('http') && !name.includes('C/S'))) {
+        let basePart = name;
+        if (name.includes(' (')) {
+            basePart = name.substring(0, name.indexOf(' ('));
+        }
+        const parts = name.split(/[/]/).map(p => p.trim());
+        if (parts.length >= 2 && parts.length <= 6) {
+            const isOptions = parts.every(p => p.length < 20);
+            if (isOptions) {
+                return parts;
+            }
+        }
+    }
+    return null;
+}
+
+function selectVariantOption(eqId, option) {
+    selectedOptions[eqId] = option;
+
+    if (!selectedQty[eqId] || selectedQty[eqId] === 0) {
+        selectedQty[eqId] = 1;
+        const qtySpan = document.getElementById(`qty-val-${eqId}`);
+        if (qtySpan) qtySpan.textContent = 1;
+        const checkbox = document.getElementById(`eq-check-${eqId}`);
+        if (checkbox) checkbox.checked = true;
+    }
+
+    const card = document.getElementById(`eq-card-${eqId}`);
+    if (card) {
+        card.classList.add('selected');
+        card.querySelectorAll('.variant-chip').forEach(chip => {
+            chip.classList.toggle('active', chip.dataset.opt === option);
+        });
+    }
+
+    updateFormCartSummary();
+}
+
 function renderFormEquipmentChecklist() {
     const container = document.getElementById('form-equipment-checklist') || document.getElementById('equipment-checklist-container');
     if (!container) return;
 
-    // Safety fallback: if equipmentList is empty, populate from INITIAL_EQUIPMENT_LIST
     if (!equipmentList || equipmentList.length === 0) {
         equipmentList = [...INITIAL_EQUIPMENT_LIST];
     }
@@ -918,21 +982,41 @@ function renderFormEquipmentChecklist() {
             catItems.forEach(item => {
                 const qty = selectedQty[item.id] || 0;
                 const isSelected = qty > 0;
+                const opts = getItemOptions(item);
+
+                let variantChipsHtml = '';
+                if (opts && opts.length > 0) {
+                    const currentOpt = selectedOptions[item.id] || opts[0];
+                    const chips = opts.map(opt => {
+                        const isActive = (currentOpt === opt);
+                        return `<button type="button" class="variant-chip ${isActive ? 'active' : ''}" data-opt="${escapeHtml(opt)}" onclick="selectVariantOption('${item.id}', '${escapeHtml(opt)}')">${escapeHtml(opt)}</button>`;
+                    }).join('');
+                    
+                    variantChipsHtml = `
+                        <div class="variant-chips-wrapper" style="margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--border-color); display:flex; flex-direction:column; gap:0.25rem;">
+                            <span class="variant-label" style="font-size:0.75rem; font-weight:600; color:var(--primary);"><i class="fa-solid fa-circle-dot"></i> เลือกขนาด/ชนิด:</span>
+                            <div class="variant-chips-group" style="display:flex; flex-wrap:wrap; gap:0.3rem;">${chips}</div>
+                        </div>
+                    `;
+                }
 
                 html += `
-                    <div class="eq-check-card ${isSelected ? 'selected' : ''}" id="eq-card-${item.id}" style="background:var(--bg-card); border:1px solid var(--border-color); padding:0.65rem 0.85rem; border-radius:8px; display:flex; align-items:center; justify-space-between;">
-                        <label class="eq-label-container" style="display:flex; align-items:center; gap:0.6rem; flex:1; cursor:pointer;">
-                            <input type="checkbox" id="eq-check-${item.id}" ${isSelected ? 'checked' : ''} onchange="toggleQtyFromCheckbox('${item.id}', this.checked)">
-                            <div class="eq-info-block" style="display:flex; flex-direction:column;">
-                                <span class="eq-item-name" style="font-weight:600; font-size:0.9rem; color:var(--text-primary);">${escapeHtml(item.name)}</span>
-                                <span class="eq-item-cat-sub" style="font-size:0.75rem; color:var(--text-muted);">${escapeHtml(item.category)}</span>
+                    <div class="eq-check-card ${isSelected ? 'selected' : ''}" id="eq-card-${item.id}" style="background:var(--bg-card); border:1px solid var(--border-color); padding:0.65rem 0.85rem; border-radius:8px; display:flex; flex-direction:column; gap:0.4rem;">
+                        <div style="display:flex; align-items:center; justify-content:space-between; width:100%;">
+                            <label class="eq-label-container" style="display:flex; align-items:center; gap:0.6rem; flex:1; cursor:pointer;">
+                                <input type="checkbox" id="eq-check-${item.id}" ${isSelected ? 'checked' : ''} onchange="toggleQtyFromCheckbox('${item.id}', this.checked)">
+                                <div class="eq-info-block" style="display:flex; flex-direction:column;">
+                                    <span class="eq-item-name" style="font-weight:600; font-size:0.9rem; color:var(--text-primary);">${escapeHtml(item.name)}</span>
+                                    <span class="eq-item-cat-sub" style="font-size:0.75rem; color:var(--text-muted);">${escapeHtml(item.category)}</span>
+                                </div>
+                            </label>
+                            <div class="qty-counter-control" style="display:flex; align-items:center; gap:0.3rem;">
+                                <button type="button" class="qty-btn minus" onclick="updateQty('${item.id}', -1)" style="border:1px solid var(--border-color); background:var(--bg-main); width:26px; height:26px; border-radius:4px; cursor:pointer;"><i class="fa-solid fa-minus"></i></button>
+                                <span class="qty-number-display" id="qty-val-${item.id}" style="min-width:20px; text-align:center; font-weight:700;">${qty}</span>
+                                <button type="button" class="qty-btn plus" onclick="updateQty('${item.id}', 1)" style="border:1px solid var(--border-color); background:var(--bg-main); width:26px; height:26px; border-radius:4px; cursor:pointer;"><i class="fa-solid fa-plus"></i></button>
                             </div>
-                        </label>
-                        <div class="qty-counter-control" style="display:flex; align-items:center; gap:0.3rem;">
-                            <button type="button" class="qty-btn minus" onclick="updateQty('${item.id}', -1)" style="border:1px solid var(--border-color); background:var(--bg-main); width:26px; height:26px; border-radius:4px; cursor:pointer;"><i class="fa-solid fa-minus"></i></button>
-                            <span class="qty-number-display" id="qty-val-${item.id}" style="min-width:20px; text-align:center; font-weight:700;">${qty}</span>
-                            <button type="button" class="qty-btn plus" onclick="updateQty('${item.id}', 1)" style="border:1px solid var(--border-color); background:var(--bg-main); width:26px; height:26px; border-radius:4px; cursor:pointer;"><i class="fa-solid fa-plus"></i></button>
                         </div>
+                        ${variantChipsHtml}
                     </div>
                 `;
             });
@@ -975,9 +1059,15 @@ function handleFormSubmit(e) {
     equipmentList.forEach(item => {
         const qty = selectedQty[item.id] || 0;
         if (qty > 0) {
+            const opts = getItemOptions(item);
+            let nameToSave = item.name;
+            if (opts && opts.length > 0) {
+                const chosenOpt = selectedOptions[item.id] || opts[0];
+                nameToSave = `${item.name} [ขนาด/ชนิด: ${chosenOpt}]`;
+            }
             selectedInstruments.push({
                 id: item.id,
-                name: item.name,
+                name: nameToSave,
                 category: item.category,
                 qty: qty
             });
