@@ -108,76 +108,26 @@
         </div>
     </main>
 
-    <!-- Modal Form: แบบฟอร์มบันทึกการเบิกเครื่องมือผ่าตัด (เปิดเมื่อกดปุ่มยื่นคำขอ) -->
+    <!-- Modal Form: แบบฟอร์มบันทึกการเบิกเครื่องมือผ่าตัด (2-Step E-Commerce Cart Workflow) -->
     <div class="modal-backdrop" id="borrow-form-modal" style="display: none;">
         <div class="modal-card modal-lg">
             <div class="modal-header">
-                <div class="modal-title">
-                    <i class="fa-solid fa-pen-to-square"></i>
-                    <h3>แบบฟอร์มบันทึกการเบิกเครื่องมือผ่าตัด</h3>
+                <div class="modal-title" id="cart-modal-title">
+                    <i class="fa-solid fa-scissors"></i>
+                    <h3>ขั้นตอนที่ 1: เลือกรายการเครื่องมือผ่าตัด (Catalog)</h3>
                 </div>
                 <button class="modal-close-btn" onclick="closeBorrowFormModal()"><i class="fa-solid fa-xmark"></i></button>
             </div>
+            
             <div class="modal-body">
                 <form id="borrow-form" onsubmit="handleFormSubmit(event)">
-                    <!-- Section 1: ข้อมูลผู้เบิก ห้องผ่าตัด และกำหนดวันที่ -->
-                    <div class="form-section">
-                        <h3 class="section-title"><i class="fa-solid fa-user-doctor"></i> 1. ข้อมูลผู้เบิก ห้องผ่าตัด และกำหนดวันที่</h3>
-                        
-                        <div class="form-grid">
-                            <div class="form-group">
-                                <label for="borrower-name" class="required-label">ชื่อ-นามสกุล ผู้เบิก</label>
-                                <div class="input-with-icon">
-                                    <i class="fa-solid fa-user"></i>
-                                    <input type="text" id="borrower-name" placeholder="เช่น นพ.สมชาย ใจดี หรือ พย.วิภา สุขสรรค์" required>
-                                </div>
-                            </div>
-
-                            <div class="form-group">
-                                <label for="or-room-select" class="required-label">เบอร์ห้องผ่าตัด (OR Room)</label>
-                                <div class="input-with-icon">
-                                    <i class="fa-solid fa-door-open"></i>
-                                    <select id="or-room-select" required class="styled-select">
-                                        <option value="" disabled selected>-- เลือกห้องผ่าตัด (OR 1 - OR 20) --</option>
-                                        <!-- JS Populated OR 1 to OR 20 -->
-                                    </select>
-                                </div>
-                            </div>
-
-                            <!-- 1. วันที่ใช้อุปกรณ์ -->
-                            <div class="form-group">
-                                <label for="usage-date" class="required-label">วันที่ใช้อุปกรณ์</label>
-                                <div class="input-with-icon">
-                                    <i class="fa-solid fa-calendar-check"></i>
-                                    <input type="date" id="usage-date" required class="styled-input">
-                                </div>
-                            </div>
-
-                            <!-- 2. กำหนดวันที่ส่งคืนอุปกรณ์ -->
-                            <div class="form-group">
-                                <label for="expected-return-date" class="required-label">กำหนดวันที่คืนอุปกรณ์</label>
-                                <div class="input-with-icon">
-                                    <i class="fa-solid fa-calendar-rotate"></i>
-                                    <input type="date" id="expected-return-date" required class="styled-input">
-                                </div>
-                            </div>
+                    
+                    <!-- STEP 1: CATALOG VIEW (เลือกอุปกรณ์ลงตะกร้า) -->
+                    <div id="modal-step-catalog">
+                        <div class="step-indicator-bar" style="display:flex; justify-content:space-between; align-items:center; background:var(--primary-light); padding:0.6rem 1rem; border-radius:8px; margin-bottom:1rem;">
+                            <span style="font-weight:700; color:var(--primary); font-size:0.9rem;"><i class="fa-solid fa-layer-group"></i> 1. ค้นหาและติ๊กเลือกเครื่องมือผ่าตัด</span>
+                            <span style="font-size:0.8rem; color:var(--text-muted);">เลือกเสร็จแล้วกด "ดูตะกร้าสินค้า" ด้านล่าง</span>
                         </div>
-
-                        <div style="margin-top:0.85rem;" class="field-hint">
-                            <i class="fa-solid fa-circle-info"></i> ระบบจะบันทึกวันและเวลาจริง ณ ตอนกดส่งแบบฟอร์มให้อัตโนมัติ เพื่อจัดลำดับคิวให้พนักงานคลังจัดของ
-                        </div>
-                    </div>
-
-                    <!-- Section 2: เลือกรายการเครื่องมือผ่าตัด แยกตามหมวดหมู่ -->
-                    <div class="form-section">
-                        <div class="section-title-wrapper">
-                            <h3 class="section-title"><i class="fa-solid fa-scissors"></i> 2. เลือกรายการเครื่องมือผ่าตัด (ระบุจำนวนชิ้น)</h3>
-                            <div class="select-all-actions">
-                                <button type="button" class="btn-link" onclick="clearAllSelectedInstruments()">ล้างการเลือกทั้งหมด</button>
-                            </div>
-                        </div>
-
-                        <p class="section-desc">ติ๊กเลือกเครื่องมือและปรับจำนวนชิ้น <code>[-] [1] [+]</code> ที่ต้องการเบิก:</p>
 
                         <!-- Category Filter Navigation Tabs in Form -->
                         <div class="category-nav-bar" id="category-nav-bar">
@@ -226,31 +176,112 @@
                         <div class="equipment-categories-wrapper" id="form-equipment-checklist">
                             <!-- Populated dynamically by category from JS -->
                         </div>
-                    </div>
 
-                    <!-- Section 3: หมายเหตุเพิ่มเติม -->
-                    <div class="form-section">
-                        <h3 class="section-title"><i class="fa-solid fa-comment-medical"></i> 3. หมายเหตุเพิ่มเติม (ถ้ามี)</h3>
-                        <div class="form-group">
-                            <textarea id="borrow-notes" rows="3" placeholder="ระบุวัตถุประสงค์ คำขอพิเศษ หรือรายละเอียดเพิ่มเติม..."></textarea>
+                        <!-- Selected Items Summary Floating Bar -->
+                        <div class="selected-items-floating-bar" id="selected-summary-bar" style="margin-top:1rem; background:var(--bg-card); border:1px solid var(--border-color); padding:0.85rem 1.25rem; border-radius:12px; display:flex; align-items:center; justify-content:space-between; box-shadow:var(--shadow-md);">
+                            <div class="summary-count-info" style="display:flex; align-items:center; gap:0.6rem;">
+                                <i class="fa-solid fa-cart-shopping" style="font-size:1.2rem; color:var(--primary);"></i>
+                                <span style="font-size:0.95rem;">ในตะกร้า: <strong id="selected-items-count" style="color:var(--primary);">0</strong> รายการ (<strong id="selected-total-qty">0</strong> ชิ้น)</span>
+                            </div>
+                            <div style="display:flex; gap:0.5rem;">
+                                <button type="button" class="btn-link" onclick="clearAllSelectedInstruments()" style="font-size:0.85rem; color:var(--rose);">ล้างตะกร้า</button>
+                                <button type="button" class="btn-primary" onclick="goToCartCheckoutStep()" style="font-weight:700; padding:0.55rem 1.2rem; border-radius:99px; box-shadow:0 4px 12px rgba(2, 132, 199, 0.3);">
+                                    <i class="fa-solid fa-basket-shopping"></i> ดูตะกร้า & ยื่นเบิก (<span id="btn-cart-qty">0</span>) <i class="fa-solid fa-arrow-right"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Selected Items Summary Bar -->
-                    <div class="selected-items-floating-bar" id="selected-summary-bar">
-                        <div class="summary-count-info">
-                            <i class="fa-solid fa-basket-shopping"></i>
-                            <span>เลือกแล้ว: <strong id="selected-items-count">0</strong> รายการ (<strong id="selected-total-qty">0</strong> ชิ้น)</span>
+                    <!-- STEP 2: CART CHECKOUT VIEW (ตรวจสอบรายการในตะกร้า & ข้อมูลผู้เบิก) -->
+                    <div id="modal-step-checkout" style="display: none;">
+                        
+                        <!-- Header Bar for Step 2 -->
+                        <div class="step-indicator-bar" style="display:flex; justify-content:space-between; align-items:center; background:var(--emerald-light); padding:0.6rem 1rem; border-radius:8px; margin-bottom:1.25rem;">
+                            <span style="font-weight:700; color:var(--emerald); font-size:0.95rem;"><i class="fa-solid fa-clipboard-check"></i> ขั้นตอนที่ 2: ตรวจสอบรายการในตะกร้า & กรอกข้อมูลผู้เบิก</span>
+                            <button type="button" class="btn-outline btn-sm" onclick="backToCatalogStep()"><i class="fa-solid fa-arrow-left"></i> กลับไปเลือกอุปกรณ์เพิ่ม</button>
+                        </div>
+
+                        <!-- Itemized Cart Review Table -->
+                        <div class="form-section">
+                            <h3 class="section-title"><i class="fa-solid fa-cart-flatbed"></i> รายการอุปกรณ์ผ่าตัดในตะกร้า</h3>
+                            <div class="cart-items-table-wrapper" style="border:1px solid var(--border-color); border-radius:8px; overflow:hidden; margin-top:0.5rem;">
+                                <table class="mini-table" style="width:100%; border-collapse:collapse;">
+                                    <thead>
+                                        <tr style="background:var(--bg-main); border-bottom:1px solid var(--border-color); text-align:left; font-size:0.85rem;">
+                                            <th style="padding:0.6rem 0.85rem;">หมวดหมู่</th>
+                                            <th style="padding:0.6rem 0.85rem;">ชื่อเครื่องมือผ่าตัด / ขนาด</th>
+                                            <th style="padding:0.6rem 0.85rem; text-align:center; width:120px;">จำนวน (ชิ้น)</th>
+                                            <th style="padding:0.6rem 0.85rem; text-align:center; width:60px;">ลบ</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="cart-checkout-tbody">
+                                        <!-- JS Populated Cart Items -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Section: ข้อมูลผู้เบิก ห้องผ่าตัด และกำหนดวันที่ -->
+                        <div class="form-section" style="margin-top:1.5rem;">
+                            <h3 class="section-title"><i class="fa-solid fa-user-doctor"></i> ข้อมูลผู้เบิก ห้องผ่าตัด และกำหนดวันที่</h3>
+                            
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label for="borrower-name" class="required-label">ชื่อ-นามสกุล ผู้เบิก</label>
+                                    <div class="input-with-icon">
+                                        <i class="fa-solid fa-user"></i>
+                                        <input type="text" id="borrower-name" placeholder="เช่น นพ.สมชาย ใจดี หรือ พย.วิภา สุขสรรค์">
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="or-room-select" class="required-label">เบอร์ห้องผ่าตัด (OR Room)</label>
+                                    <div class="input-with-icon">
+                                        <i class="fa-solid fa-door-open"></i>
+                                        <select id="or-room-select" class="styled-select">
+                                            <option value="" disabled selected>-- เลือกห้องผ่าตัด (OR 1 - OR 20) --</option>
+                                            <!-- JS Populated OR 1 to OR 20 -->
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <!-- วันที่ใช้อุปกรณ์ -->
+                                <div class="form-group">
+                                    <label for="usage-date" class="required-label">วันที่ใช้อุปกรณ์</label>
+                                    <div class="input-with-icon">
+                                        <i class="fa-solid fa-calendar-check"></i>
+                                        <input type="date" id="usage-date" class="styled-input">
+                                    </div>
+                                </div>
+
+                                <!-- กำหนดวันที่ส่งคืนอุปกรณ์ -->
+                                <div class="form-group">
+                                    <label for="expected-return-date" class="required-label">กำหนดวันที่คืนอุปกรณ์</label>
+                                    <div class="input-with-icon">
+                                        <i class="fa-solid fa-calendar-rotate"></i>
+                                        <input type="date" id="expected-return-date" class="styled-input">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Section: หมายเหตุเพิ่มเติม -->
+                        <div class="form-section" style="margin-top:1rem;">
+                            <h3 class="section-title"><i class="fa-solid fa-comment-medical"></i> หมายเหตุเพิ่มเติม (ถ้ามี)</h3>
+                            <div class="form-group">
+                                <textarea id="borrow-notes" rows="2" placeholder="ระบุวัตถุประสงค์ คำขอพิเศษ หรือรายละเอียดเพิ่มเติม..."></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Submit Button Footer -->
+                        <div class="modal-footer justify-between" style="margin-top:1.5rem;">
+                            <button type="button" class="btn-secondary" onclick="backToCatalogStep()"><i class="fa-solid fa-arrow-left"></i> เลือกอุปกรณ์เพิ่ม</button>
+                            <button type="submit" class="btn-primary btn-lg" style="background:linear-gradient(135deg, #10b981 0%, #059669 100%); border:none; box-shadow:0 4px 15px rgba(16, 185, 129, 0.3);">
+                                <i class="fa-solid fa-paper-plane"></i> ยืนยันส่งคำขอเบิกอุปกรณ์ไปยังห้องจัดเตรียม
+                            </button>
                         </div>
                     </div>
 
-                    <!-- Submit Button -->
-                    <div class="modal-footer justify-between">
-                        <button type="button" class="btn-secondary" onclick="closeBorrowFormModal()">ยกเลิก</button>
-                        <button type="submit" class="btn-primary btn-lg">
-                            <i class="fa-solid fa-paper-plane"></i> ส่งคำขอเบิกอุปกรณ์ไปยังห้องจัดเตรียม
-                        </button>
-                    </div>
                 </form>
             </div>
         </div>
