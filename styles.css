@@ -1291,6 +1291,53 @@ body {
     color: var(--primary);
 }
 
+/* Custom Equipment Card Checkbox Icon Box */
+.custom-eq-checkbox {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+}
+
+.custom-check-box {
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    border: 2px solid var(--border-color);
+    background-color: var(--bg-main);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: transparent;
+    font-size: 0.75rem;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    flex-shrink: 0;
+}
+
+.eq-check-card:hover .custom-check-box {
+    border-color: var(--primary);
+}
+
+.custom-eq-checkbox:checked + .custom-check-box,
+.eq-check-card.selected .custom-check-box {
+    background-color: var(--emerald);
+    border-color: var(--emerald);
+    color: #ffffff;
+    box-shadow: 0 2px 6px rgba(16, 185, 129, 0.35);
+    transform: scale(1.05);
+}
+
+.eq-check-card {
+    transition: all 0.2s ease;
+}
+
+.eq-check-card.selected {
+    background-color: rgba(16, 185, 129, 0.06) !important;
+    border-color: var(--emerald) !important;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.12);
+}
+
 /* Equipment Settings Modal Refined Styles */
 .add-eq-form-card {
     background-color: var(--bg-main);

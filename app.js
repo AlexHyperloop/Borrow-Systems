@@ -81,26 +81,19 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // Sync Equipment Items with Auto-healing
+        // Sync Equipment Items
         db.ref('equipment_items').on('value', (snapshot) => {
             const data = snapshot.val();
             if (data && Array.isArray(data)) {
                 const isCorrupted = data.some(item => item.category && (item.category.includes('à') || item.category.includes('?')));
-                if (isCorrupted || data.length < 50) {
+                if (isCorrupted) {
                     equipmentList = [...INITIAL_EQUIPMENT_LIST];
                     if (db) db.ref('equipment_items').set(equipmentList);
                 } else {
                     equipmentList = data;
-                    let updated = false;
-                    INITIAL_EQUIPMENT_LIST.forEach(initItem => {
-                        if (!equipmentList.some(item => item.id === initItem.id || item.name === initItem.name)) {
-                            equipmentList.push(initItem);
-                            updated = true;
-                        }
-                    });
-                    if (updated && db) db.ref('equipment_items').set(equipmentList);
                 }
                 localStorage.setItem('surgical_equipment_items_v10', JSON.stringify(equipmentList));
+                if (typeof renderEquipmentManageTable === 'function') renderEquipmentManageTable();
                 if (typeof renderBorrowTable === 'function') renderBorrowTable();
             } else if (!data) {
                 equipmentList = [...INITIAL_EQUIPMENT_LIST];
@@ -141,7 +134,7 @@ function loadStateFromStorage() {
         try {
             equipmentList = JSON.parse(savedEq);
             const isCorrupted = equipmentList.some(item => item.category && (item.category.includes('à') || item.category.includes('?')));
-            if (isCorrupted || equipmentList.length < 50) {
+            if (isCorrupted) {
                 equipmentList = JSON.parse(JSON.stringify(INITIAL_EQUIPMENT_LIST));
                 saveEquipmentToStorage();
             }

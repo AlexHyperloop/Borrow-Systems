@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ==========================================================================
  * ระบบยืม-คืนเครื่องมือผ่าตัด - ฝ่ายห้องผ่าตัด (OR Mobile Requisition & Status Tracker)
  * Dedicated Script for status.html (Mobile-Friendly Form & Tracker)
@@ -429,18 +429,19 @@ function renderFormEquipmentChecklist() {
                 const isSelected = qty > 0;
 
                 html += `
-                    <div class="eq-check-card ${isSelected ? 'selected' : ''}" id="eq-card-${item.id}" style="background:var(--bg-card); border:1px solid var(--border-color); padding:0.65rem 0.85rem; border-radius:8px; display:flex; align-items:center; justify-content:space-between;">
-                        <label class="eq-label-container" style="display:flex; align-items:center; gap:0.6rem; flex:1; cursor:pointer;">
-                            <input type="checkbox" id="eq-check-${item.id}" ${isSelected ? 'checked' : ''} onchange="toggleQtyFromCheckbox('${item.id}', this.checked)">
-                            <div class="eq-info-block" style="display:flex; flex-direction:column;">
-                                <span class="eq-item-name" style="font-weight:600; font-size:0.9rem; color:var(--text-primary);">${escapeHtml(item.name)}</span>
-                                <span class="eq-item-cat-sub" style="font-size:0.75rem; color:var(--text-muted);">${escapeHtml(item.category)}</span>
+                    <div class="eq-check-card ${isSelected ? 'selected' : ''}" id="eq-card-${item.id}" style="background:var(--bg-card); border:1px solid var(--border-color); padding:0.7rem 0.85rem; border-radius:10px; display:flex; align-items:center; justify-content:space-between; gap:0.5rem; transition:all 0.2s ease;">
+                        <label class="eq-label-container" style="display:flex; align-items:center; gap:0.7rem; flex:1; cursor:pointer; min-width:0;">
+                            <input type="checkbox" class="custom-eq-checkbox" id="eq-check-${item.id}" ${isSelected ? 'checked' : ''} onchange="toggleQtyFromCheckbox('${item.id}', this.checked)">
+                            <span class="custom-check-box"><i class="fa-solid fa-check"></i></span>
+                            <div class="eq-info-block" style="display:flex; flex-direction:column; justify-content:center; min-width:0; overflow:hidden;">
+                                <span class="eq-item-name" style="font-weight:600; font-size:0.9rem; color:var(--text-primary); line-height:1.25; word-break:break-word;">${escapeHtml(item.name)}</span>
+                                <span class="eq-item-cat-sub" style="font-size:0.75rem; color:var(--text-muted); margin-top:0.15rem;">${escapeHtml(item.category)}</span>
                             </div>
                         </label>
-                        <div class="qty-counter-control" style="display:flex; align-items:center; gap:0.3rem;">
-                            <button type="button" class="qty-btn minus" onclick="updateQty('${item.id}', -1)" style="border:1px solid var(--border-color); background:var(--bg-main); width:26px; height:26px; border-radius:4px; cursor:pointer;"><i class="fa-solid fa-minus"></i></button>
-                            <span class="qty-number-display" id="qty-val-${item.id}" style="min-width:20px; text-align:center; font-weight:700;">${qty}</span>
-                            <button type="button" class="qty-btn plus" onclick="updateQty('${item.id}', 1)" style="border:1px solid var(--border-color); background:var(--bg-main); width:26px; height:26px; border-radius:4px; cursor:pointer;"><i class="fa-solid fa-plus"></i></button>
+                        <div class="qty-counter-control" style="display:flex; align-items:center; gap:0.35rem; flex-shrink:0;">
+                            <button type="button" class="qty-btn minus" onclick="updateQty('${item.id}', -1)" style="border:1px solid var(--border-color); background:var(--bg-main); width:28px; height:28px; border-radius:6px; cursor:pointer; font-size:0.8rem;"><i class="fa-solid fa-minus"></i></button>
+                            <span class="qty-number-display" id="qty-val-${item.id}" style="min-width:22px; text-align:center; font-weight:700; font-size:0.95rem;">${qty}</span>
+                            <button type="button" class="qty-btn plus" onclick="updateQty('${item.id}', 1)" style="border:1px solid var(--border-color); background:var(--bg-main); width:28px; height:28px; border-radius:6px; cursor:pointer; font-size:0.8rem;"><i class="fa-solid fa-plus"></i></button>
                         </div>
                     </div>
                 `;
