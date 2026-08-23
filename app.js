@@ -851,11 +851,27 @@ function importEquipmentFromCSV(event) {
             });
 
             if (newItems.length > 0) {
-                equipmentList = newItems;
+                if (!equipmentList) equipmentList = [];
+                
+                let addedCount = 0;
+                let duplicateCount = 0;
+
+                newItems.forEach((newItem, idx) => {
+                    const isDuplicate = equipmentList.some(eq => eq.name === newItem.name && eq.category === newItem.category);
+                    if (!isDuplicate) {
+                        newItem.id = 'eq-' + Date.now() + '-' + idx + '-' + Math.floor(Math.random() * 1000);
+                        equipmentList.push(newItem);
+                        addedCount++;
+                    } else {
+                        duplicateCount++;
+                    }
+                });
+
                 saveEquipmentToStorage();
                 renderEquipmentManageTable();
                 if (typeof renderFormEquipmentChecklist === 'function') renderFormEquipmentChecklist();
-                alert(`นำเข้ารายการอุปกรณ์สำเร็จทั้งหมด ${newItems.length} รายการ`);
+                
+                alert(`นำเข้ารายการอุปกรณ์สำเร็จ!\n- เพิ่มใหม่: ${addedCount} รายการ\n- รายการที่มีอยู่แล้ว (ข้าม): ${duplicateCount} รายการ\n- รวมอุปกรณ์ในระบบทั้งหมด: ${equipmentList.length} รายการ`);
             } else {
                 alert('ไม่พบข้อมูลอุปกรณ์ในไฟล์ที่เลือก');
             }
