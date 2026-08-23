@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ==========================================================================
  * ระบบยืม-คืนเครื่องมือผ่าตัด - ฝ่ายห้องผ่าตัด (OR Mobile Requisition & Status Tracker)
  * Dedicated Script for status.html (Mobile-Friendly Form & Tracker)
@@ -342,10 +342,26 @@ function renderBorrowTable() {
             const tr = document.createElement('tr');
             
             const eqList = record.equipmentList || record.instruments || [];
-            let eqHtml = eqList.map(eq => {
-                const qty = eq.quantity || eq.qty || 1;
-                return `<span class="equipment-pill">${escapeHtml(eq.name)} <span class="qty-badge">${qty}</span></span>`;
-            }).join('');
+            let totalQty = 0;
+            eqList.forEach(e => { totalQty += (e.quantity || e.qty || 1); });
+
+            let eqHtml = '';
+            if (eqList.length === 0) {
+                eqHtml = '<span style="color:var(--text-muted); font-size:0.85rem;">- ไม่มีรายการ -</span>';
+            } else if (eqList.length <= 2) {
+                eqHtml = eqList.map(eq => {
+                    const qty = eq.quantity || eq.qty || 1;
+                    return `<span class="equipment-pill">${escapeHtml(eq.name)} <span class="qty-badge">${qty}</span></span>`;
+                }).join('');
+                eqHtml += ` <button type="button" class="btn-pop-more-items" onclick="openEquipmentDetailModal('${record.id}')" title="กดดูรายละเอียดเพิ่มเติม"><i class="fa-solid fa-magnifying-glass-plus"></i></button>`;
+            } else {
+                const firstTwo = eqList.slice(0, 2).map(eq => {
+                    const qty = eq.quantity || eq.qty || 1;
+                    return `<span class="equipment-pill">${escapeHtml(eq.name)} <span class="qty-badge">${qty}</span></span>`;
+                }).join('');
+                const remaining = eqList.length - 2;
+                eqHtml = `${firstTwo} <button type="button" class="btn-pop-more-items" onclick="openEquipmentDetailModal('${record.id}')"><i class="fa-solid fa-boxes-stacked"></i> +อีก ${remaining} รายการ (รวม ${totalQty} ชิ้น)</button>`;
+            }
             
             let statusHtml = '';
             if (record.status === 'pending') statusHtml = '<span class="status-badge pending"><i class="fa-solid fa-clock"></i> อยู่ระหว่างจัดเตรียม</span>';
@@ -355,6 +371,7 @@ function renderBorrowTable() {
             
             let actionBtns = '';
             let printBtn = `<button class="btn-outline btn-sm" onclick="printBorrowDocument('${record.id}')" title="พิมพ์ใบจัดเตรียม"><i class="fa-solid fa-print"></i></button>`;
+            let deleteBtn = `<button class="btn-danger btn-sm" onclick="deleteBorrowRecord('${record.id}')" title="ลบรายการเบิกนี้"><i class="fa-solid fa-trash-can"></i></button>`;
             
             if (record.status === 'pending') {
                 actionBtns = `
@@ -362,22 +379,25 @@ function renderBorrowTable() {
                         <i class="fa-solid fa-check"></i> จัดเตรียมเรียบร้อย
                     </button>
                     ${printBtn}
+                    ${deleteBtn}
                 `;
             } else if (record.status === 'ready') {
-                actionBtns = printBtn;
+                actionBtns = `
+                    ${printBtn}
+                    ${deleteBtn}
+                `;
             } else if (record.status === 'borrowed') {
                 actionBtns = `
                     <button class="btn-success btn-sm" onclick="openReturnModal('${record.id}')">
                         <i class="fa-solid fa-rotate-left"></i> รับคืน
                     </button>
                     ${printBtn}
+                    ${deleteBtn}
                 `;
-            } else if (record.status === 'returned') {
+            } else {
                 actionBtns = `
-                    <button class="btn-danger btn-sm" onclick="deleteBorrowRecord('${record.id}')">
-                        <i class="fa-solid fa-trash-can"></i>
-                    </button>
                     ${printBtn}
+                    ${deleteBtn}
                 `;
             }
 
@@ -647,21 +667,116 @@ function renderEquipmentManageTable() {
     filtered.forEach((eq, idx) => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td style="font-weight:600; color:var(--text-muted);">${idx + 1}</td>
-            <td><span class="equipment-pill">${escapeHtml(eq.category)}</span></td>
-            <td style="font-weight:600;">${escapeHtml(eq.name)}</td>
-            <td>
-                <label class="switch">
+            <td style="text-align:center; font-weight:600; color:var(--text-muted);">${idx + 1}</td>
+            <td><span class="equipment-pill" style="font-size:0.78rem;">${escapeHtml(eq.category)}</span></td>
+            <td style="font-weight:600; color:var(--text-primary);">${escapeHtml(eq.name)}</td>
+            <td style="text-align:center;">
+                <label class="switch" style="margin:0 auto; display:inline-block;">
                     <input type="checkbox" ${eq.active !== false ? 'checked' : ''} onchange="toggleEquipmentActive('${eq.id}')">
                     <span class="slider round"></span>
                 </label>
             </td>
-            <td>
-                <button type="button" class="btn-danger btn-sm" onclick="deleteEquipment('${eq.id}')" title="ลบรายการ"><i class="fa-solid fa-trash-can"></i></button>
+            <td style="text-align:center;">
+                <button type="button" class="btn-danger btn-sm" onclick="deleteEquipment('${eq.id}')" title="ลบรายการ" style="padding:0.35rem 0.65rem; border-radius:6px;"><i class="fa-solid fa-trash-can"></i></button>
             </td>
         `;
         tbody.appendChild(tr);
     });
+}
+
+function openEquipmentDetailModal(recordId) {
+    const record = borrowRecords.find(r => r.id === recordId);
+    if (!record) return;
+
+    const modal = document.getElementById('equipment-detail-modal');
+    if (!modal) return;
+
+    const eqList = record.equipmentList || record.instruments || [];
+    const useDateStr = formatDateThai(record.useDate || record.usageDate);
+    const reqTimeStr = record.requestTime || '';
+
+    const headerEl = document.getElementById('pop-detail-info-header');
+    if (headerEl) {
+        headerEl.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+                <div>
+                    <span class="or-room-badge" style="margin-right:0.5rem; font-weight:700;">${escapeHtml(record.orRoom)}</span>
+                    <strong style="font-size:1.05rem; color:var(--text-primary);">${escapeHtml(record.borrowerName)}</strong>
+                </div>
+                <div style="color:var(--text-muted); font-size:0.82rem;">
+                    <i class="fa-solid fa-clock"></i> ยื่นเบิกเมื่อ: ${record.requestDate || ''} ${reqTimeStr ? 'เวลา ' + reqTimeStr + ' น.' : ''} | <i class="fa-solid fa-calendar"></i> วันที่ใช้: ${useDateStr}
+                </div>
+            </div>
+        `;
+    }
+
+    const tbody = document.getElementById('pop-detail-tbody');
+    if (tbody) {
+        let html = '';
+        let totalItemsQty = 0;
+
+        eqList.forEach((eq, idx) => {
+            const qty = eq.quantity || eq.qty || 1;
+            totalItemsQty += qty;
+            html += `
+                <tr style="border-bottom:1px solid var(--border-color); font-size:0.9rem;">
+                    <td style="padding:0.6rem 0.85rem; font-weight:600; color:var(--text-muted);">${idx + 1}</td>
+                    <td style="padding:0.6rem 0.85rem;"><span class="equipment-pill" style="font-size:0.75rem;">${escapeHtml(eq.category || 'อุปกรณ์ผ่าตัด')}</span></td>
+                    <td style="padding:0.6rem 0.85rem; font-weight:600;">${escapeHtml(eq.name)}</td>
+                    <td style="padding:0.6rem 0.85rem; text-align:center;"><span class="qty-badge" style="font-size:0.85rem; padding:0.2rem 0.6rem;">${qty} ชิ้น</span></td>
+                </tr>
+            `;
+        });
+
+        html += `
+            <tr style="background:var(--primary-light); font-weight:700;">
+                <td colspan="3" style="padding:0.65rem 0.85rem; text-align:right; color:var(--primary);">รวมอุปกรณ์ทั้งหมด (${eqList.length} รายการ):</td>
+                <td style="padding:0.65rem 0.85rem; text-align:center; color:var(--primary); font-size:0.95rem;">${totalItemsQty} ชิ้น</td>
+            </tr>
+        `;
+
+        tbody.innerHTML = html;
+    }
+
+    const notesEl = document.getElementById('pop-detail-notes');
+    if (notesEl) {
+        if (record.notes) {
+            notesEl.innerHTML = `<i class="fa-solid fa-comment-medical" style="color:var(--amber);"></i> <strong>หมายเหตุ:</strong> ${escapeHtml(record.notes)}`;
+        } else {
+            notesEl.innerHTML = '';
+        }
+    }
+
+    const printBtn = document.getElementById('pop-detail-print-btn');
+    if (printBtn) {
+        printBtn.onclick = function() {
+            closeEquipmentDetailModal();
+            if (typeof openChecklistPrintModal === 'function') {
+                openChecklistPrintModal(record.id);
+            } else if (typeof printBorrowDocument === 'function') {
+                printBorrowDocument(record.id);
+            }
+        };
+    }
+
+    const popDeleteBtn = document.getElementById('pop-detail-delete-btn');
+    if (popDeleteBtn) {
+        popDeleteBtn.onclick = function() {
+            closeEquipmentDetailModal();
+            deleteBorrowRecord(record.id);
+        };
+    }
+
+    modal.style.display = 'flex';
+    modal.classList.add('open');
+}
+
+function closeEquipmentDetailModal() {
+    const modal = document.getElementById('equipment-detail-modal');
+    if (modal) {
+        modal.style.display = 'none';
+        modal.classList.remove('open');
+    }
 }
 
 function handleAddEquipment(e) {

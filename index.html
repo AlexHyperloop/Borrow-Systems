@@ -301,66 +301,113 @@
         </div>
     </div>
 
+    <!-- Modal: รายละเอียดอุปกรณ์ผ่าตัดทั้งหมด (Pop-up View Equipment Detail Modal) -->
+    <div class="modal-backdrop" id="equipment-detail-modal" style="display: none;">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div class="modal-title">
+                    <i class="fa-solid fa-boxes-stacked"></i>
+                    <h3 id="pop-detail-modal-title">รายละเอียดรายการอุปกรณ์ผ่าตัดที่เบิก</h3>
+                </div>
+                <button class="modal-close-btn" onclick="closeEquipmentDetailModal()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <div id="pop-detail-info-header" style="background:var(--bg-main); padding:0.75rem 1rem; border-radius:8px; margin-bottom:1rem; border:1px solid var(--border-color); font-size:0.9rem;">
+                    <!-- JS Populated Header (Borrower Name, OR Room, Date) -->
+                </div>
+
+                <div class="table-responsive" style="max-height:350px; overflow-y:auto; border:1px solid var(--border-color); border-radius:8px;">
+                    <table class="mini-table" style="width:100%;">
+                        <thead>
+                            <tr style="background:var(--bg-main); font-size:0.85rem;">
+                                <th style="padding:0.6rem 0.85rem; width:40px;">#</th>
+                                <th style="padding:0.6rem 0.85rem;">หมวดหมู่</th>
+                                <th style="padding:0.6rem 0.85rem;">ชื่ออุปกรณ์ผ่าตัด</th>
+                                <th style="padding:0.6rem 0.85rem; text-align:center; width:80px;">จำนวน</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pop-detail-tbody">
+                            <!-- JS Populated Items -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div id="pop-detail-notes" style="margin-top:0.75rem; font-size:0.85rem; color:var(--text-secondary);"></div>
+
+                <div class="modal-footer justify-between" style="margin-top:1.25rem;">
+                    <div style="display:flex; gap:0.5rem; align-items:center;">
+                        <button type="button" class="btn-secondary" onclick="closeEquipmentDetailModal()">ปิดหน้าต่าง</button>
+                        <button type="button" class="btn-danger btn-sm" id="pop-detail-delete-btn" style="font-weight:600; padding:0.4rem 0.75rem;"><i class="fa-solid fa-trash-can"></i> ลบรายการเบิกนี้</button>
+                    </div>
+                    <button type="button" class="btn-primary" id="pop-detail-print-btn">
+                        <i class="fa-solid fa-print"></i> พิมพ์ใบจัดเตรียม (Checklist)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal 4: จัดการตัวเลือกรายการเครื่องมือผ่าตัด (Equipment Manager Modal) -->
     <div class="modal-backdrop" id="equipment-manager-modal" style="display: none;">
         <div class="modal-card modal-lg">
             <div class="modal-header">
                 <div class="modal-title">
                     <i class="fa-solid fa-toolbox"></i>
-                    <h3>จัดการรายการเครื่องมือผ่าตัดและหมวดหมู่ (Equipment List Settings)</h3>
+                    <h3>จัดการรายการเครื่องมือผ่าตัดและหมวดหมู่ (Equipment Settings)</h3>
                 </div>
                 <button class="modal-close-btn" onclick="closeEquipmentManager()"><i class="fa-solid fa-xmark"></i></button>
             </div>
-            <div class="modal-body">
-                <p>ท่านสามารถเพิ่ม แก้ไข หรือลบรายการเครื่องมือผ่าตัดและจัดเข้าหมวดหมู่ทั้ง 6 หมวดได้ที่นี่:</p>
+            <div class="modal-body" style="padding: 1.25rem 1.5rem;">
+                <p style="font-size: 0.88rem; color: var(--text-secondary); margin-bottom: 0.85rem;">
+                    ท่านสามารถเพิ่ม แก้ไข เปิด/ปิดใช้งาน หรือลบรายการเครื่องมือผ่าตัดแยกตามหมวดหมู่ทั้ง 10 หมวดได้ที่นี่:
+                </p>
 
-                <form id="add-equipment-form" onsubmit="handleAddEquipment(event)" class="add-eq-form">
-                    <div class="form-row-grid">
-                        <div class="form-group flex-2">
-                            <input type="text" id="new-eq-name" placeholder="ชื่อเครื่องมือผ่าตัดใหม่..." required class="styled-input">
-                        </div>
-                        <div class="form-group flex-1">
-                            <select id="new-eq-category" class="styled-select" required>
-                                <option value="Set Package">Set Package</option>
-                                <option value="อุปกรณ์ทั่วไป">อุปกรณ์ทั่วไป</option>
-                                <option value="Set เครื่องมือ">Set เครื่องมือ</option>
-                                <option value="Set เครื่องผ้า">Set เครื่องผ้า</option>
-                                <option value="ตู้ Ortho">ตู้ Ortho</option>
-                                <option value="ตู้ Neuro">ตู้ Neuro</option>
-                                <option value="ตู้ General">ตู้ General</option>
-                                <option value="ตู้ Plastic">ตู้ Plastic</option>
-                                <option value="ตู้ Ob-gyn">ตู้ Ob-gyn</option>
-                                <option value="ตู้ Uro + Ob-gyn">ตู้ Uro + Ob-gyn</option>
-                            </select>
-                        </div>
-                        <button type="submit" class="btn-primary">
+                <!-- Form เพิ่มรายการอุปกรณ์ใหม่ (1-Line Inline Card) -->
+                <form id="add-equipment-form" onsubmit="handleAddEquipment(event)" class="add-eq-form-card">
+                    <div class="add-eq-input-group">
+                        <input type="text" id="new-eq-name" placeholder="พิมพ์ชื่อเครื่องมือผ่าตัดใหม่ที่ต้องการเพิ่ม..." required class="styled-input" style="flex: 2; min-width: 220px;">
+                        <select id="new-eq-category" class="styled-select" required style="flex: 1.2; min-width: 150px;">
+                            <option value="Set Package">Set Package</option>
+                            <option value="อุปกรณ์ทั่วไป">อุปกรณ์ทั่วไป</option>
+                            <option value="Set เครื่องมือ">Set เครื่องมือ</option>
+                            <option value="Set เครื่องผ้า">Set เครื่องผ้า</option>
+                            <option value="ตู้ Ortho">ตู้ Ortho</option>
+                            <option value="ตู้ Neuro">ตู้ Neuro</option>
+                            <option value="ตู้ General">ตู้ General</option>
+                            <option value="ตู้ Plastic">ตู้ Plastic</option>
+                            <option value="ตู้ Ob-gyn">ตู้ Ob-gyn</option>
+                            <option value="ตู้ Uro + Ob-gyn">ตู้ Uro + Ob-gyn</option>
+                        </select>
+                        <button type="submit" class="btn-primary" style="white-space: nowrap; height: 42px; padding: 0 1.25rem; font-weight: 600;">
                             <i class="fa-solid fa-plus"></i> เพิ่มรายการ
                         </button>
                     </div>
                 </form>
 
-                <div class="equipment-manager-actions" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; margin-bottom:1rem; padding:0.75rem; background:var(--bg-main); border-radius:8px; border:1px solid var(--border-color);">
-                    <div style="display:flex; align-items:center; gap:0.5rem;">
-                        <label class="btn-outline btn-sm" style="cursor:pointer; display:inline-flex; align-items:center; gap:0.4rem; font-weight:600;">
-                            <i class="fa-solid fa-file-csv" style="color:var(--emerald);"></i> นำเข้าจาก Excel/CSV
+                <!-- Actions Toolbar (Excel Import & Clear All) -->
+                <div class="equipment-manager-actions">
+                    <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+                        <label class="btn-outline btn-sm" style="cursor:pointer; display:inline-flex; align-items:center; gap:0.45rem; font-weight:600; padding:0.45rem 0.85rem; border-color:var(--emerald); color:var(--emerald);">
+                            <i class="fa-solid fa-file-csv" style="font-size:1.1rem;"></i> นำเข้าจาก Excel/CSV
                             <input type="file" id="csv-equipment-file-input" accept=".csv, .txt" onchange="importEquipmentFromCSV(event)" style="display:none;">
                         </label>
-                        <span style="font-size:0.78rem; color:var(--text-muted);">(ไฟล์ CSV 2 คอลัมน์: ชื่ออุปกรณ์, หมวดหมู่)</span>
+                        <span style="font-size:0.78rem; color:var(--text-muted);"><i class="fa-solid fa-circle-info"></i> รองรับ CSV 2 คอลัมน์ (ชื่ออุปกรณ์, หมวดหมู่)</span>
                     </div>
-                    <button type="button" class="btn-danger btn-sm" onclick="clearAllEquipmentItems()" style="font-weight:600;">
+                    <button type="button" class="btn-danger-light btn-sm" onclick="clearAllEquipmentItems()" style="font-weight:600; padding:0.45rem 0.85rem;">
                         <i class="fa-solid fa-trash-can"></i> ล้างรายการอุปกรณ์ทั้งหมด
                     </button>
                 </div>
 
-                <div class="equipment-list-table-wrapper">
-                    <table class="mini-table">
+                <!-- Table Container with Sticky Header & Balanced Padding -->
+                <div class="equipment-table-container">
+                    <table class="styled-mini-table">
                         <thead>
                             <tr>
-                                <th>#</th>
-                                <th>หมวดหมู่</th>
-                                <th>ชื่อเครื่องมือผ่าตัด</th>
-                                <th>สถานะใช้งาน</th>
-                                <th>การจัดการ</th>
+                                <th style="width: 50px; text-align: center;">#</th>
+                                <th style="width: 150px; text-align: left;">หมวดหมู่</th>
+                                <th style="text-align: left;">ชื่อเครื่องมือผ่าตัด</th>
+                                <th style="width: 110px; text-align: center;">สถานะใช้งาน</th>
+                                <th style="width: 90px; text-align: center;">จัดการ</th>
                             </tr>
                         </thead>
                         <tbody id="equipment-manager-table-body">
@@ -369,7 +416,7 @@
                     </table>
                 </div>
 
-                <div class="modal-footer">
+                <div class="modal-footer" style="margin-top: 1.25rem;">
                     <button type="button" class="btn-secondary" onclick="closeEquipmentManager()">ปิดหน้าต่าง</button>
                 </div>
             </div>
