@@ -66,12 +66,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (data && Array.isArray(data)) {
                 borrowRecords = data;
                 localStorage.setItem('surgical_borrow_records_v10', JSON.stringify(borrowRecords));
-                if (typeof renderBorrowTable === 'function') renderBorrowTable();
-                if (typeof updateStatistics === 'function') updateStatistics();
             } else if (!data) {
                 borrowRecords = [];
-                saveRecordsToStorage();
+                localStorage.setItem('surgical_borrow_records_v10', JSON.stringify(borrowRecords));
             }
+            if (typeof renderBorrowTable === 'function') renderBorrowTable();
+            if (typeof updateStatistics === 'function') updateStatistics();
         }, (error) => {
             console.error("Firebase Records listener error:", error);
             const badge = document.getElementById('firebase-status-badge');
@@ -85,21 +85,14 @@ document.addEventListener('DOMContentLoaded', () => {
         db.ref('equipment_items').on('value', (snapshot) => {
             const data = snapshot.val();
             if (data && Array.isArray(data)) {
-                const isCorrupted = data.some(item => item.category && (item.category.includes('à') || item.category.includes('?')));
-                if (isCorrupted) {
-                    equipmentList = [...INITIAL_EQUIPMENT_LIST];
-                    if (db) db.ref('equipment_items').set(equipmentList);
-                } else {
-                    equipmentList = data;
-                }
+                equipmentList = data;
                 localStorage.setItem('surgical_equipment_items_v10', JSON.stringify(equipmentList));
-                if (typeof renderEquipmentManageTable === 'function') renderEquipmentManageTable();
-                if (typeof renderBorrowTable === 'function') renderBorrowTable();
             } else if (!data) {
-                equipmentList = [...INITIAL_EQUIPMENT_LIST];
+                equipmentList = [];
                 localStorage.setItem('surgical_equipment_items_v10', JSON.stringify(equipmentList));
-                if (typeof renderBorrowTable === 'function') renderBorrowTable();
             }
+            if (typeof renderEquipmentManageTable === 'function') renderEquipmentManageTable();
+            if (typeof renderBorrowTable === 'function') renderBorrowTable();
         });
     } else {
         const badge = document.getElementById('firebase-status-badge');
@@ -133,18 +126,11 @@ function loadStateFromStorage() {
     if (savedEq) {
         try {
             equipmentList = JSON.parse(savedEq);
-            const isCorrupted = equipmentList.some(item => item.category && (item.category.includes('à') || item.category.includes('?')));
-            if (isCorrupted) {
-                equipmentList = JSON.parse(JSON.stringify(INITIAL_EQUIPMENT_LIST));
-                saveEquipmentToStorage();
-            }
         } catch (e) {
-            equipmentList = JSON.parse(JSON.stringify(INITIAL_EQUIPMENT_LIST));
-            saveEquipmentToStorage();
+            equipmentList = [];
         }
     } else {
-        equipmentList = JSON.parse(JSON.stringify(INITIAL_EQUIPMENT_LIST));
-        saveEquipmentToStorage();
+        equipmentList = [];
     }
 
     const savedRecords = localStorage.getItem('surgical_borrow_records_v10');

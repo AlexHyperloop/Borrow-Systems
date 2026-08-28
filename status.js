@@ -66,11 +66,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (data && Array.isArray(data)) {
                 borrowRecords = data;
                 localStorage.setItem('surgical_borrow_records_v10', JSON.stringify(borrowRecords));
-                renderStatusTrackerCards();
             } else if (!data) {
                 borrowRecords = [];
-                saveRecordsToStorage();
+                localStorage.setItem('surgical_borrow_records_v10', JSON.stringify(borrowRecords));
             }
+            renderStatusTrackerCards();
         }, (error) => {
             console.error("Firebase Records listener error:", error);
             const badge = document.getElementById('firebase-status-badge');
@@ -84,20 +84,13 @@ document.addEventListener('DOMContentLoaded', () => {
         db.ref('equipment_items').on('value', (snapshot) => {
             const data = snapshot.val();
             if (data && Array.isArray(data)) {
-                const isCorrupted = data.some(item => item.category && (item.category.includes('à') || item.category.includes('?')));
-                if (isCorrupted) {
-                    equipmentList = [...INITIAL_EQUIPMENT_LIST];
-                    if (db) db.ref('equipment_items').set(equipmentList);
-                } else {
-                    equipmentList = data;
-                }
+                equipmentList = data;
                 localStorage.setItem('surgical_equipment_items_v10', JSON.stringify(equipmentList));
-                renderFormEquipmentChecklist();
             } else if (!data) {
-                equipmentList = [...INITIAL_EQUIPMENT_LIST];
+                equipmentList = [];
                 localStorage.setItem('surgical_equipment_items_v10', JSON.stringify(equipmentList));
-                renderFormEquipmentChecklist();
             }
+            renderFormEquipmentChecklist();
         });
     } else {
         const badge = document.getElementById('firebase-status-badge');
@@ -131,18 +124,11 @@ function loadStateFromStorage() {
     if (savedEq) {
         try {
             equipmentList = JSON.parse(savedEq);
-            const isCorrupted = equipmentList.some(item => item.category && (item.category.includes('à') || item.category.includes('?')));
-            if (isCorrupted) {
-                equipmentList = [...INITIAL_EQUIPMENT_LIST];
-                saveEquipmentToStorage();
-            }
         } catch (e) {
-            equipmentList = [...INITIAL_EQUIPMENT_LIST];
-            saveEquipmentToStorage();
+            equipmentList = [];
         }
     } else {
-        equipmentList = [...INITIAL_EQUIPMENT_LIST];
-        saveEquipmentToStorage();
+        equipmentList = [];
     }
 
     const savedRecords = localStorage.getItem('surgical_borrow_records_v10');
@@ -151,7 +137,6 @@ function loadStateFromStorage() {
             borrowRecords = JSON.parse(savedRecords);
         } catch (e) {
             borrowRecords = [];
-            saveRecordsToStorage();
         }
     } else {
         borrowRecords = [];
