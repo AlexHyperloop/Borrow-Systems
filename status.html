@@ -87,9 +87,10 @@
                     <table class="data-table simple-status-table">
                         <thead>
                             <tr>
-                                <th style="width: 130px;">ห้องผ่าตัด</th>
+                                <th style="width: 120px;">ห้องผ่าตัด</th>
                                 <th>ชื่อ-นามสกุล ผู้เบิก / เวลาที่ยื่นส่งเบิก</th>
-                                <th style="width: 240px; text-align: center;">สถานะการจัดเตรียม</th>
+                                <th style="width: 180px; text-align: center;">สถานะการจัดเตรียม</th>
+                                <th style="width: 150px; text-align: center;">เอกสารใบเบิก</th>
                             </tr>
                         </thead>
                         <tbody id="simple-status-tbody">
@@ -283,6 +284,31 @@
                     </div>
 
                 </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: ใบคำขอเบิกเครื่องมือผ่าตัดสำหรับผู้เบิก (Requisition Document Slip Modal) -->
+    <div class="modal-backdrop" id="borrower-doc-modal" style="display: none;">
+        <div class="modal-card modal-lg">
+            <div class="modal-header">
+                <div class="modal-title">
+                    <i class="fa-solid fa-file-invoice" style="color:var(--primary);"></i>
+                    <h3 id="doc-modal-title">ใบคำขอเบิกเครื่องมือผ่าตัด (Requisition Slip)</h3>
+                </div>
+                <button class="modal-close-btn" onclick="closeBorrowerDocModal()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="checklist-paper-preview" id="printable-checklist-container">
+                    <!-- Dynamic Printable Document Content for Borrower -->
+                </div>
+
+                <div class="modal-footer justify-between" style="margin-top:1.25rem;">
+                    <button type="button" class="btn-secondary" onclick="closeBorrowerDocModal()">ปิดหน้าต่าง</button>
+                    <button type="button" class="btn-primary" onclick="printBorrowerDoc()" style="background-color: var(--primary);">
+                        <i class="fa-solid fa-print"></i> พิมพ์เอกสาร (หรือบันทึกเป็น PDF)
+                    </button>
+                </div>
             </div>
         </div>
     </div>

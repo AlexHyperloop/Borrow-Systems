@@ -36,6 +36,27 @@ let equipmentList = [];
 let borrowRecords = [];
 let selectedCategory = 'all';
 let selectedQty = {};
+let selectedSizes = {};
+
+// Helper: Check if instrument requires size/number specification (Type A)
+function hasSizePlaceholder(name) {
+    if (!name) return false;
+    return /\.{2,}/.test(name) || /No\.\s*\.{1,}/i.test(name) || /ขนาด\s*\.{1,}/.test(name) || /ระบุ/i.test(name);
+}
+
+// Helper: Format instrument name with size
+function formatInstrumentNameWithSize(name, size) {
+    if (!size || !size.trim()) return name;
+    const cleanSize = size.trim();
+    if (/\.{2,}/.test(name)) {
+        return name.replace(/\.{2,}/, ` ${cleanSize} `).replace(/\s+/g, ' ').trim();
+    }
+    return `${name} (ขนาด: ${cleanSize})`;
+}
+
+function updateItemSize(eqId, value) {
+    selectedSizes[eqId] = value;
+}
 
 // --------------------------------------------------------------------------
 // 2. App Initialization & Real-time Listeners (v10 Auto-healing)
@@ -233,16 +254,27 @@ function updateQty(eqId, delta) {
     const next = Math.max(0, current + delta);
     selectedQty[eqId] = next;
 
-    const qtySpan = document.getElementById(`qty-val-${eqId}`);
-    if (qtySpan) qtySpan.textContent = next;
+    const item = equipmentList.find(e => e.id === eqId);
+    if (item && hasSizePlaceholder(item.name)) {
+        renderFormEquipmentChecklist();
+        if (next > 0) {
+            setTimeout(() => {
+                const inputEl = document.getElementById(`eq-size-${eqId}`);
+                if (inputEl && !inputEl.value) inputEl.focus();
+            }, 30);
+        }
+    } else {
+        const qtySpan = document.getElementById(`qty-val-${eqId}`);
+        if (qtySpan) qtySpan.textContent = next;
 
-    const checkbox = document.getElementById(`eq-check-${eqId}`);
-    if (checkbox) checkbox.checked = next > 0;
+        const checkbox = document.getElementById(`eq-check-${eqId}`);
+        if (checkbox) checkbox.checked = next > 0;
 
-    const card = document.getElementById(`eq-card-${eqId}`);
-    if (card) card.classList.toggle('selected', next > 0);
+        const card = document.getElementById(`eq-card-${eqId}`);
+        if (card) card.classList.toggle('selected', next > 0);
 
-    updateFormCartSummary();
+        updateFormCartSummary();
+    }
 }
 
 function toggleQtyFromCheckbox(eqId, checked) {
@@ -254,17 +286,29 @@ function toggleQtyFromCheckbox(eqId, checked) {
         selectedQty[eqId] = 0;
     }
 
-    const qtySpan = document.getElementById(`qty-val-${eqId}`);
-    if (qtySpan) qtySpan.textContent = selectedQty[eqId];
+    const item = equipmentList.find(e => e.id === eqId);
+    if (item && hasSizePlaceholder(item.name)) {
+        renderFormEquipmentChecklist();
+        if (checked) {
+            setTimeout(() => {
+                const inputEl = document.getElementById(`eq-size-${eqId}`);
+                if (inputEl) inputEl.focus();
+            }, 30);
+        }
+    } else {
+        const qtySpan = document.getElementById(`qty-val-${eqId}`);
+        if (qtySpan) qtySpan.textContent = selectedQty[eqId];
 
-    const card = document.getElementById(`eq-card-${eqId}`);
-    if (card) card.classList.toggle('selected', selectedQty[eqId] > 0);
+        const card = document.getElementById(`eq-card-${eqId}`);
+        if (card) card.classList.toggle('selected', selectedQty[eqId] > 0);
 
-    updateFormCartSummary();
+        updateFormCartSummary();
+    }
 }
 
 function clearAllSelectedInstruments() {
     selectedQty = {};
+    selectedSizes = {};
     renderFormEquipmentChecklist();
     updateFormCartSummary();
 }
@@ -337,12 +381,22 @@ function renderCartCheckoutTable() {
         const qty = selectedQty[item.id] || 0;
         if (qty > 0) {
             hasItems = true;
-            let displayName = escapeHtml(item.name);
+            const sizeVal = selectedSizes[item.id] || '';
+            const needSize = hasSizePlaceholder(item.name);
+            const displayName = formatInstrumentNameWithSize(item.name, sizeVal);
 
             html += `
                 <tr style="border-bottom:1px solid var(--border-color); font-size:0.9rem;">
                     <td style="padding:0.6rem 0.85rem;"><span class="equipment-pill" style="font-size:0.75rem;">${escapeHtml(item.category)}</span></td>
-                    <td style="padding:0.6rem 0.85rem; font-weight:600;">${displayName}</td>
+                    <td style="padding:0.6rem 0.85rem; font-weight:600;">
+                        <div>${escapeHtml(displayName)}</div>
+                        ${needSize ? `
+                            <div style="margin-top:0.35rem; display:flex; align-items:center; gap:0.4rem;">
+                                <span style="font-size:0.75rem; color:var(--primary); font-weight:600;"><i class="fa-solid fa-pen-ruler"></i> ขนาด:</span>
+                                <input type="text" class="styled-input" placeholder="ระบุขนาด..." value="${escapeHtml(sizeVal)}" oninput="updateItemSize('${item.id}', this.value); renderCartCheckoutTable();" style="font-size:0.78rem; padding:0.15rem 0.45rem; height:26px; border-radius:4px; max-width:140px; border:1px solid var(--primary);">
+                            </div>
+                        ` : ''}
+                    </td>
                     <td style="padding:0.6rem 0.85rem; text-align:center;">
                         <div style="display:inline-flex; align-items:center; gap:0.3rem;">
                             <button type="button" class="qty-btn minus" onclick="updateCartCheckoutQty('${item.id}', -1)" style="border:1px solid var(--border-color); background:var(--bg-main); width:24px; height:24px; border-radius:4px; cursor:pointer;"><i class="fa-solid fa-minus"></i></button>
@@ -379,6 +433,7 @@ function updateCartCheckoutQty(eqId, delta) {
 
 function removeFromCartCheckout(eqId) {
     selectedQty[eqId] = 0;
+    delete selectedSizes[eqId];
     updateFormCartSummary();
     renderCartCheckoutTable();
 }
@@ -412,22 +467,40 @@ function renderFormEquipmentChecklist() {
             catItems.forEach(item => {
                 const qty = selectedQty[item.id] || 0;
                 const isSelected = qty > 0;
+                const needSize = hasSizePlaceholder(item.name);
+                const sizeVal = selectedSizes[item.id] || '';
 
                 html += `
-                    <div class="eq-check-card ${isSelected ? 'selected' : ''}" id="eq-card-${item.id}" style="background:var(--bg-card); border:1px solid var(--border-color); padding:0.7rem 0.85rem; border-radius:10px; display:flex; align-items:center; justify-content:space-between; gap:0.5rem; transition:all 0.2s ease;">
-                        <label class="eq-label-container" style="display:flex; align-items:center; gap:0.7rem; flex:1; cursor:pointer; min-width:0;">
-                            <input type="checkbox" class="custom-eq-checkbox" id="eq-check-${item.id}" ${isSelected ? 'checked' : ''} onchange="toggleQtyFromCheckbox('${item.id}', this.checked)">
-                            <span class="custom-check-box"><i class="fa-solid fa-check"></i></span>
-                            <div class="eq-info-block" style="display:flex; flex-direction:column; justify-content:center; min-width:0; overflow:hidden;">
-                                <span class="eq-item-name" style="font-weight:600; font-size:0.9rem; color:var(--text-primary); line-height:1.25; word-break:break-word;">${escapeHtml(item.name)}</span>
-                                <span class="eq-item-cat-sub" style="font-size:0.75rem; color:var(--text-muted); margin-top:0.15rem;">${escapeHtml(item.category)}</span>
+                    <div class="eq-check-card ${isSelected ? 'selected' : ''}" id="eq-card-${item.id}" style="background:var(--bg-card); border:1px solid var(--border-color); padding:0.7rem 0.85rem; border-radius:10px; display:flex; flex-direction:column; gap:0.4rem; transition:all 0.2s ease;">
+                        <div style="display:flex; align-items:center; justify-content:space-between; gap:0.5rem; width:100%;">
+                            <label class="eq-label-container" style="display:flex; align-items:center; gap:0.7rem; flex:1; cursor:pointer; min-width:0; margin:0;">
+                                <input type="checkbox" class="custom-eq-checkbox" id="eq-check-${item.id}" ${isSelected ? 'checked' : ''} onchange="toggleQtyFromCheckbox('${item.id}', this.checked)">
+                                <span class="custom-check-box"><i class="fa-solid fa-check"></i></span>
+                                <div class="eq-info-block" style="display:flex; flex-direction:column; justify-content:center; min-width:0; overflow:hidden;">
+                                    <span class="eq-item-name" style="font-weight:600; font-size:0.9rem; color:var(--text-primary); line-height:1.25; word-break:break-word;">${escapeHtml(item.name)}</span>
+                                    <span class="eq-item-cat-sub" style="font-size:0.75rem; color:var(--text-muted); margin-top:0.15rem;">${escapeHtml(item.category)}</span>
+                                </div>
+                            </label>
+                            <div class="qty-counter-control" style="display:flex; align-items:center; gap:0.35rem; flex-shrink:0;">
+                                <button type="button" class="qty-btn minus" onclick="updateQty('${item.id}', -1)" style="border:1px solid var(--border-color); background:var(--bg-main); width:28px; height:28px; border-radius:6px; cursor:pointer; font-size:0.8rem;"><i class="fa-solid fa-minus"></i></button>
+                                <span class="qty-number-display" id="qty-val-${item.id}" style="min-width:22px; text-align:center; font-weight:700; font-size:0.95rem;">${qty}</span>
+                                <button type="button" class="qty-btn plus" onclick="updateQty('${item.id}', 1)" style="border:1px solid var(--border-color); background:var(--bg-main); width:28px; height:28px; border-radius:6px; cursor:pointer; font-size:0.8rem;"><i class="fa-solid fa-plus"></i></button>
                             </div>
-                        </label>
-                        <div class="qty-counter-control" style="display:flex; align-items:center; gap:0.35rem; flex-shrink:0;">
-                            <button type="button" class="qty-btn minus" onclick="updateQty('${item.id}', -1)" style="border:1px solid var(--border-color); background:var(--bg-main); width:28px; height:28px; border-radius:6px; cursor:pointer; font-size:0.8rem;"><i class="fa-solid fa-minus"></i></button>
-                            <span class="qty-number-display" id="qty-val-${item.id}" style="min-width:22px; text-align:center; font-weight:700; font-size:0.95rem;">${qty}</span>
-                            <button type="button" class="qty-btn plus" onclick="updateQty('${item.id}', 1)" style="border:1px solid var(--border-color); background:var(--bg-main); width:28px; height:28px; border-radius:6px; cursor:pointer; font-size:0.8rem;"><i class="fa-solid fa-plus"></i></button>
                         </div>
+                        ${(isSelected && needSize) ? `
+                            <div class="eq-size-input-wrapper" id="eq-size-box-${item.id}" style="padding-top:0.35rem; border-top:1px dashed var(--border-color); width:100%;" onclick="event.stopPropagation();">
+                                <div style="display:flex; align-items:center; gap:0.4rem;">
+                                    <span style="font-size:0.8rem; color:var(--primary); font-weight:600; white-space:nowrap;"><i class="fa-solid fa-pen-ruler"></i> ระบุขนาด:</span>
+                                    <input type="text" 
+                                           class="styled-input eq-size-input" 
+                                           id="eq-size-${item.id}" 
+                                           placeholder="เช่น 15, 10 mm, No.2..." 
+                                           value="${escapeHtml(sizeVal)}" 
+                                           oninput="updateItemSize('${item.id}', this.value)" 
+                                           style="padding:0.25rem 0.55rem; font-size:0.82rem; flex:1; height:30px; border-radius:6px; border:1.5px solid var(--primary); background:var(--bg-card); color:var(--text-primary);">
+                                </div>
+                            </div>
+                        ` : ''}
                     </div>
                 `;
             });
@@ -470,9 +543,13 @@ function handleFormSubmit(e) {
     equipmentList.forEach(item => {
         const qty = selectedQty[item.id] || 0;
         if (qty > 0) {
+            const rawSize = (selectedSizes[item.id] || '').trim();
+            const formattedName = formatInstrumentNameWithSize(item.name, rawSize);
             selectedInstruments.push({
                 id: item.id,
-                name: item.name,
+                name: formattedName,
+                originalName: item.name,
+                size: rawSize || null,
                 category: item.category,
                 qty: qty
             });
@@ -507,6 +584,7 @@ function handleFormSubmit(e) {
 
     // Reset Form State
     selectedQty = {};
+    selectedSizes = {};
     document.getElementById('borrow-form')?.reset();
     setDefaultFormDates();
     renderFormEquipmentChecklist();
@@ -550,6 +628,8 @@ function renderStatusTrackerCards() {
 
     let html = '';
     filtered.forEach(record => {
+        const eqList = record.instruments || record.equipmentList || [];
+        const totalQty = eqList.reduce((sum, item) => sum + (item.qty || item.quantity || 1), 0);
         const reqDateStr = formatThaiDate(record.requestDate || record.borrowDate);
         const reqTimeStr = record.requestTime ? ` (ยื่นเวลา ${record.requestTime} น.)` : '';
 
@@ -559,9 +639,17 @@ function renderStatusTrackerCards() {
                 <td>
                     <div class="borrower-name-cell">${escapeHtml(record.borrowerName)}</div>
                     <div class="borrower-id-sub">ยื่นเบิกเมื่อ: <strong>${reqDateStr}${reqTimeStr}</strong></div>
+                    <div style="font-size:0.8rem; color:var(--text-muted); margin-top:0.25rem;">
+                        <i class="fa-solid fa-boxes-stacked" style="color:var(--primary);"></i> รายการ: <strong>${eqList.length}</strong> รายการ (${totalQty} ชิ้น)
+                    </div>
                 </td>
                 <td style="text-align:center;">
                     ${getStatusBadgeMobile(record.status)}
+                </td>
+                <td style="text-align:center;">
+                    <button type="button" class="btn-doc-pdf" onclick="openBorrowerDocModal('${record.id}')" title="กดดูรายการที่เบิก / พิมพ์ PDF" style="display:inline-flex; align-items:center; gap:0.4rem; padding:0.45rem 0.85rem; font-size:0.85rem; font-weight:600; border-radius:8px; border:1px solid var(--primary); color:var(--primary); background:var(--bg-main); cursor:pointer; white-space:nowrap; transition:all 0.2s ease;">
+                        <i class="fa-solid fa-file-pdf" style="color:#ef4444; font-size:1.1rem;"></i> <span>ดูใบเบิก / PDF</span>
+                    </button>
                 </td>
             </tr>
         `;
@@ -583,6 +671,151 @@ function getStatusBadgeMobile(status) {
         default:
             return `<span class="m-status-pill">${escapeHtml(status)}</span>`;
     }
+}
+
+// --------------------------------------------------------------------------
+// 7. Borrower Requisition Document Slip Modal & Print Handling
+// --------------------------------------------------------------------------
+let currentDocRecordId = null;
+
+function openBorrowerDocModal(recordId) {
+    currentDocRecordId = recordId;
+    const record = borrowRecords.find(r => r.id === recordId);
+    if (!record) return;
+
+    const modal = document.getElementById('borrower-doc-modal');
+    const container = document.getElementById('printable-checklist-container');
+    if (!modal || !container) return;
+
+    const eqList = record.instruments || record.equipmentList || [];
+    let totalQty = 0;
+
+    let itemsHtml = '';
+    eqList.forEach((eq, idx) => {
+        const qty = eq.qty || eq.quantity || 1;
+        totalQty += qty;
+        const catName = eq.category || 'อุปกรณ์ผ่าตัด';
+        itemsHtml += `
+            <tr style="border-bottom: 1px solid #cbd5e1; font-size: 0.9rem;">
+                <td style="padding: 0.6rem 0.75rem; text-align: center; border: 1px solid #cbd5e1; color: #475569;">${idx + 1}</td>
+                <td style="padding: 0.6rem 0.75rem; border: 1px solid #cbd5e1;"><span style="background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 99px; font-size: 0.75rem; font-weight: 600;">${escapeHtml(catName)}</span></td>
+                <td style="padding: 0.6rem 0.75rem; font-weight: 600; border: 1px solid #cbd5e1; color: #0f172a;">${escapeHtml(eq.name)}</td>
+                <td style="padding: 0.6rem 0.75rem; text-align: center; font-weight: 700; color: #0284c7; border: 1px solid #cbd5e1; font-size: 0.95rem;">${qty}</td>
+                <td style="padding: 0.6rem 0.75rem; text-align: center; border: 1px solid #cbd5e1;"><span class="print-check-box" style="width:20px; height:20px; border:2px solid #64748b; border-radius:4px; display:inline-block;"></span></td>
+            </tr>
+        `;
+    });
+
+    if (eqList.length === 0) {
+        itemsHtml = `
+            <tr>
+                <td colspan="5" style="padding: 1.5rem; text-align: center; color: #64748b; border: 1px solid #cbd5e1;">- ไม่พบรายการอุปกรณ์ -</td>
+            </tr>
+        `;
+    }
+
+    const reqDateStr = formatThaiDate(record.requestDate || record.borrowDate);
+    const reqTimeStr = record.requestTime ? `เวลา ${record.requestTime} น.` : '';
+    const useDateStr = record.usageDate || record.useDate;
+    const returnDateStr = record.expectedReturnDate || record.returnDate;
+
+    let statusThai = 'อยู่ระหว่างจัดเตรียม';
+    let statusColor = '#f59e0b';
+    if (record.status === 'ready') { statusThai = 'จัดเตรียมเสร็จแล้ว (พร้อมรับ)'; statusColor = '#10b981'; }
+    else if (record.status === 'borrowed') { statusThai = 'ถูกยืมไปใช้งานแล้ว'; statusColor = '#0284c7'; }
+    else if (record.status === 'returned') { statusThai = 'ส่งคืนเรียบร้อยแล้ว'; statusColor = '#64748b'; }
+
+    container.innerHTML = `
+        <div class="print-doc-header" style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #0284c7; padding-bottom:1rem; margin-bottom:1.25rem;">
+            <div class="print-header-brand" style="display:flex; align-items:center; gap:0.85rem;">
+                <i class="fa-solid fa-hospital-user" style="color:#0284c7; font-size:2.2rem;"></i>
+                <div>
+                    <h2 style="margin:0; font-size:1.3rem; font-weight:700; color:#0f172a;">ใบคำขอเบิกเครื่องมือผ่าตัด</h2>
+                    <p style="margin:2px 0 0 0; font-size:0.85rem; color:#64748b;">Surgical Instrument Requisition & Handover Slip (ฝ่ายห้องผ่าตัด OR)</p>
+                </div>
+            </div>
+            <div class="print-doc-ref" style="text-align:right;">
+                <div class="print-or-badge" style="background:#0284c7; color:#fff; font-size:1.15rem; font-weight:700; padding:0.35rem 0.9rem; border-radius:6px; display:inline-block; margin-bottom:0.25rem;">${escapeHtml(record.orRoom)}</div>
+                <div class="print-ref-id" style="font-size:0.82rem; color:#64748b; font-weight:600;">REF: ${record.id}</div>
+            </div>
+        </div>
+
+        <div class="print-info-grid" style="display:grid; grid-template-columns:repeat(2, 1fr); gap:0.6rem 1.25rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:0.85rem 1rem; margin-bottom:1.25rem; font-size:0.88rem;">
+            <div class="print-info-item"><span class="label" style="font-weight:600; color:#475569;">ชื่อผู้ยื่นขอเบิก:</span> <span class="value" style="font-weight:700; color:#0f172a;">${escapeHtml(record.borrowerName)}</span></div>
+            <div class="print-info-item"><span class="label" style="font-weight:600; color:#475569;">ห้องผ่าตัดที่ใช้งาน:</span> <span class="value" style="font-weight:700; color:#0284c7;">${escapeHtml(record.orRoom)}</span></div>
+            <div class="print-info-item"><span class="label" style="font-weight:600; color:#475569;">วัน-เวลาที่ยื่นส่งเบิก:</span> <span class="value" style="color:#0f172a;">${reqDateStr} ${reqTimeStr}</span></div>
+            <div class="print-info-item"><span class="label" style="font-weight:600; color:#475569;">วันที่ต้องการใช้งาน:</span> <span class="value" style="color:#0f172a; font-weight:600;">${formatThaiDate(useDateStr)}</span></div>
+            <div class="print-info-item"><span class="label" style="font-weight:600; color:#475569;">กำหนดส่งคืนอุปกรณ์:</span> <span class="value" style="color:#0f172a;">${formatThaiDate(returnDateStr)}</span></div>
+            <div class="print-info-item"><span class="label" style="font-weight:600; color:#475569;">สถานะการจัดเตรียม:</span> <span class="value" style="font-weight:700; color:${statusColor};">${statusThai}</span></div>
+        </div>
+
+        <div style="margin-top: 1rem;">
+            <h4 style="margin: 0 0 0.6rem 0; font-size: 0.95rem; color: #0f172a; display:flex; align-items:center; gap:0.4rem;">
+                <i class="fa-solid fa-list-check" style="color:#0284c7;"></i> รายการเครื่องมือและอุปกรณ์ผ่าตัดที่ขอเบิก
+            </h4>
+            <table class="print-checklist-table" style="width:100%; border-collapse:collapse; font-size:0.88rem;">
+                <thead>
+                    <tr style="background:#e0f2fe; color:#0369a1;">
+                        <th style="padding:0.6rem 0.75rem; width:40px; text-align:center; border:1px solid #cbd5e1;">#</th>
+                        <th style="padding:0.6rem 0.75rem; width:140px; border:1px solid #cbd5e1; text-align:left;">หมวดหมู่</th>
+                        <th style="padding:0.6rem 0.75rem; border:1px solid #cbd5e1; text-align:left;">รายการเครื่องมือผ่าตัด / ขนาดที่ระบุ</th>
+                        <th style="padding:0.6rem 0.75rem; width:90px; text-align:center; border:1px solid #cbd5e1;">จำนวน</th>
+                        <th style="padding:0.6rem 0.75rem; width:70px; text-align:center; border:1px solid #cbd5e1;">ตรวจรับ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${itemsHtml}
+                </tbody>
+                <tfoot>
+                    <tr style="background:#f8fafc; font-weight:700;">
+                        <td colspan="3" style="padding:0.65rem 0.75rem; text-align:right; border:1px solid #cbd5e1; color:#334155;">รวมอุปกรณ์ทั้งหมด (${eqList.length} รายการ):</td>
+                        <td style="padding:0.65rem 0.75rem; text-align:center; color:#0284c7; font-size:0.95rem; border:1px solid #cbd5e1;">${totalQty} ชิ้น</td>
+                        <td style="padding:0.65rem 0.75rem; text-align:center; border:1px solid #cbd5e1;"></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        ${record.notes ? `
+        <div style="margin-top:0.85rem; padding:0.65rem 0.85rem; background:#fffbeb; border:1px solid #fef3c7; border-left:4px solid #f59e0b; border-radius:6px; font-size:0.85rem; color:#92400e;">
+            <strong><i class="fa-solid fa-comment-medical"></i> หมายเหตุเพิ่มเติม:</strong> ${escapeHtml(record.notes)}
+        </div>
+        ` : ''}
+
+        <div class="print-signatures-footer" style="display:grid; grid-template-columns:repeat(3, 1fr); gap:1.25rem; margin-top:2rem; padding-top:1rem; border-top:1px dashed #cbd5e1;">
+            <div class="signature-box" style="text-align:center;">
+                <div class="signature-line" style="border-bottom:1px dotted #64748b; height:32px; margin-bottom:4px;"></div>
+                <p style="margin:0; font-weight:600; font-size:0.82rem; color:#1e293b;">(......................................................)</p>
+                <p style="margin:2px 0 0 0; font-size:0.75rem; color:#64748b;">ผู้ยื่นขอเบิก (พยาบาลห้อง OR)</p>
+            </div>
+            <div class="signature-box" style="text-align:center;">
+                <div class="signature-line" style="border-bottom:1px dotted #64748b; height:32px; margin-bottom:4px;"></div>
+                <p style="margin:0; font-weight:600; font-size:0.82rem; color:#1e293b;">(......................................................)</p>
+                <p style="margin:2px 0 0 0; font-size:0.75rem; color:#64748b;">ผู้จัดเตรียม & จ่ายของ (ห้อง Prep)</p>
+            </div>
+            <div class="signature-box" style="text-align:center;">
+                <div class="signature-line" style="border-bottom:1px dotted #64748b; height:32px; margin-bottom:4px;"></div>
+                <p style="margin:0; font-weight:600; font-size:0.82rem; color:#1e293b;">(......................................................)</p>
+                <p style="margin:2px 0 0 0; font-size:0.75rem; color:#64748b;">ผู้ตรวจรับมอบเครื่องมือ</p>
+            </div>
+        </div>
+    `;
+
+    modal.style.display = 'flex';
+    modal.classList.add('open');
+}
+
+function closeBorrowerDocModal() {
+    const modal = document.getElementById('borrower-doc-modal');
+    if (modal) {
+        modal.style.display = 'none';
+        modal.classList.remove('open');
+    }
+    currentDocRecordId = null;
+}
+
+function printBorrowerDoc() {
+    window.print();
 }
 
 // Helpers
