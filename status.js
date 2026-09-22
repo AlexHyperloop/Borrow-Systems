@@ -31,26 +31,107 @@ if (typeof firebase !== 'undefined') {
 // --------------------------------------------------------------------------
 const INITIAL_EQUIPMENT_LIST = [];
 
+// 3 Main Groups Architecture (Mode A: 1. ห้องผ้า, 2. ห้อง Stock, 3. Set Package)
+const MAIN_GROUPS = [
+    {
+        id: 'linen',
+        name: '1. ห้องผ้า',
+        icon: 'fa-solid fa-shirt',
+        desc: 'Set เครื่องมือ, Set เครื่องผ้า & ตู้เครื่องมือผ่าตัด',
+        categories: ['Set เครื่องมือ', 'Set เครื่องผ้า', 'ตู้ Ortho', 'ตู้ Neuro', 'ตู้ General', 'ตู้ Plastic', 'ตู้ Ob-gyn', 'ตู้ Uro + Ob-gyn']
+    },
+    {
+        id: 'stock',
+        name: '2. ห้อง Stock',
+        icon: 'fa-solid fa-boxes-packing',
+        desc: 'อุปกรณ์ทั่วไป',
+        categories: ['อุปกรณ์ทั่วไป']
+    },
+    {
+        id: 'package',
+        name: '3. Set Package',
+        icon: 'fa-solid fa-box-archive',
+        desc: 'Set Package',
+        categories: ['Set Package']
+    }
+];
+
 // Global State
 let equipmentList = [];
 let borrowRecords = [];
+let selectedMainGroup = 'all'; // 'all' | 'linen' | 'stock' | 'package'
 let selectedCategory = 'all';
 let selectedQty = {};
 let selectedSizes = {};
 
-// Helper: Check if instrument requires size/number specification (Type A)
+// Helper: Check if instrument requires size/number/color specification (Type A)
 function hasSizePlaceholder(name) {
     if (!name) return false;
-    return /\.{2,}/.test(name) || /No\.\s*\.{1,}/i.test(name) || /ขนาด\s*\.{1,}/.test(name) || /ระบุ/i.test(name);
+    return /\.{2,}/.test(name) || 
+           /…/.test(name) || 
+           /_{2,}/.test(name) || 
+           /No\.\s*\.{1,}/i.test(name) || 
+           /ขนาด\s*\.{1,}/.test(name) || 
+           /ที่จับโคมไฟ/i.test(name) ||
+           /โคมไฟ\s*R/i.test(name) ||
+           /vascular/i.test(name) ||
+           /loop/i.test(name) ||
+           /ไม้พันสำลี/i.test(name) ||
+           /สำลี/i.test(name) ||
+           /ระบุ/i.test(name);
 }
 
-// Helper: Format instrument name with size
+// Helper: Custom label text based on item name
+function getSizeLabelText(name) {
+    if (!name) return "ระบุขนาด:";
+    if (/vascular|loop/i.test(name)) return "ระบุสี:";
+    if (/โคมไฟ|ที่จับ/i.test(name)) return "ระบุห้อง/เบอร์:";
+    if (/ไม้พันสำลี|สำลี/i.test(name)) return "ระบุขนาด:";
+    return "ระบุขนาด:";
+}
+
+// Helper: Custom placeholder hint text based on item name
+function getSizePlaceholderText(name) {
+    if (!name) return "ระบุขนาด / เบอร์...";
+    if (/vascular|loop/i.test(name)) {
+        return "ระบุสี เช่น แดง, น้ำเงิน, ขาว, เหลือง...";
+    }
+    if (/ไม้พันสำลี|สำลี/i.test(name)) {
+        return "ระบุขนาด เช่น เล็ก, ใหญ่, เบอร์ S, M, L...";
+    }
+    if (/โคมไฟ/i.test(name) || /ที่จับ/i.test(name)) {
+        return "ระบุห้อง/เบอร์ เช่น R1, R2, OR 5...";
+    }
+    if (/เลื่อย|ใบเลื่อย|No/i.test(name)) {
+        return "ระบุเบอร์/ขนาด เช่น 15, No.2...";
+    }
+    if (/สิ่ว|mm|มม/i.test(name)) {
+        return "ระบุขนาด เช่น 10 mm, 15 mm...";
+    }
+    return "ระบุขนาด / เบอร์ เช่น 15, No.2...";
+}
+
+// Helper: Format instrument name with size/color
 function formatInstrumentNameWithSize(name, size) {
     if (!size || !size.trim()) return name;
-    const cleanSize = size.trim();
-    if (/\.{2,}/.test(name)) {
-        return name.replace(/\.{2,}/, ` ${cleanSize} `).replace(/\s+/g, ' ').trim();
+    let cleanSize = size.trim();
+
+    // Special handling for Vascular loop or ไม้พันสำลี
+    if (/vascular|loop|ไม้พันสำลี|สำลี/i.test(name)) {
+        return `${name} (ระบุ: ${cleanSize})`;
     }
+
+    // Special handling for "ที่จับโคมไฟR......" or "ที่จับโคมไฟ"
+    if (/ที่จับโคมไฟ/i.test(name) || (/โคมไฟ/i.test(name) && /R/i.test(name))) {
+        let num = cleanSize.replace(/^R\s*/i, '').trim();
+        return `ที่จับโคมไฟ R${num || cleanSize}`;
+    }
+
+    // Replace dots/ellipsis/underscores with clean size
+    if (/\.{2,}|…|_{2,}/.test(name)) {
+        return name.replace(/\.{2,}|…|_{2,}/, ` ${cleanSize} `).replace(/\s+/g, ' ').trim();
+    }
+
     return `${name} (ขนาด: ${cleanSize})`;
 }
 
@@ -135,7 +216,7 @@ function initApp() {
     loadStateFromStorage();
     setupORRoomDropdowns();
     renderStatusTrackerCards();
-    renderFormEquipmentChecklist();
+    switchMainGroup('all');
     setDefaultFormDates();
     setupThemeFromPreferences();
 }
@@ -179,22 +260,29 @@ function saveRecordsToStorage() {
 }
 
 function setupORRoomDropdowns() {
+    const OR_ROOMS = [
+        'OR 1', 'OR 2', 'OR 3', 'OR 4', 'OR 5',
+        'OR 6', 'OR 7', 'OR 8', 'OR 9', 'OR 10',
+        'OR 11', 'OR 12A', 'OR 12B', 'OR 13', 'OR 14',
+        'OR 15', 'OR 16', 'OR 17', 'OR 18', 'OR 19', 'OR 20'
+    ];
+
     // 1. Status Filter OR Dropdown
     const filterSelect = document.getElementById('status-or-filter');
     if (filterSelect) {
-        filterSelect.innerHTML = '<option value="">ทุกห้องผ่าตัด (OR 1 - 20)</option>';
-        for (let i = 1; i <= 20; i++) {
-            filterSelect.innerHTML += `<option value="OR ${i}">ห้องผ่าตัด OR ${i}</option>`;
-        }
+        filterSelect.innerHTML = '<option value="">ทุกห้องผ่าตัด</option>';
+        OR_ROOMS.forEach(room => {
+            filterSelect.innerHTML += `<option value="${room}">ห้องผ่าตัด ${room}</option>`;
+        });
     }
 
     // 2. Form Select OR Dropdown
     const formSelect = document.getElementById('or-room-select');
     if (formSelect) {
-        formSelect.innerHTML = '<option value="" disabled selected>-- เลือกห้องผ่าตัด (OR 1 - OR 20) --</option>';
-        for (let i = 1; i <= 20; i++) {
-            formSelect.innerHTML += `<option value="OR ${i}">ห้องผ่าตัด OR ${i}</option>`;
-        }
+        formSelect.innerHTML = '<option value="" disabled selected>-- เลือกห้องผ่าตัด --</option>';
+        OR_ROOMS.forEach(room => {
+            formSelect.innerHTML += `<option value="${room}">ห้องผ่าตัด ${room}</option>`;
+        });
     }
 }
 
@@ -227,7 +315,7 @@ function openBorrowFormModal() {
         modal.classList.add('open');
     }
     backToCatalogStep();
-    renderFormEquipmentChecklist();
+    switchMainGroup('all');
 }
 
 function closeBorrowFormModal() {
@@ -239,14 +327,62 @@ function closeBorrowFormModal() {
 }
 
 // --------------------------------------------------------------------------
-// 4. Equipment Checklist Rendering & Category Filter
+// 4. Equipment Checklist Rendering & 3-Main-Groups Navigation (Mode A)
 // --------------------------------------------------------------------------
-function switchFormCategoryTab(cat) {
-    selectedCategory = cat;
-    document.querySelectorAll('.cat-nav-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.cat === cat);
+function switchMainGroup(groupId) {
+    selectedMainGroup = groupId;
+    selectedCategory = 'all';
+
+    document.querySelectorAll('.main-group-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.group === groupId);
+    });
+
+    renderSubCategoryNavPills();
+    renderFormEquipmentChecklist();
+}
+
+function switchSubCategory(catName) {
+    selectedCategory = catName;
+    document.querySelectorAll('.sub-cat-pill').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.cat === catName);
     });
     renderFormEquipmentChecklist();
+}
+
+function renderSubCategoryNavPills() {
+    const container = document.getElementById('sub-category-nav-bar');
+    if (!container) return;
+
+    if (selectedMainGroup === 'all') {
+        container.innerHTML = '';
+        container.style.display = 'none';
+        return;
+    }
+
+    const group = MAIN_GROUPS.find(g => g.id === selectedMainGroup);
+    if (!group || group.categories.length <= 1) {
+        container.innerHTML = '';
+        container.style.display = 'none';
+        return;
+    }
+
+    container.style.display = 'flex';
+
+    let html = `
+        <button type="button" class="sub-cat-pill ${selectedCategory === 'all' ? 'active' : ''}" data-cat="all" onclick="switchSubCategory('all')">
+            <i class="fa-solid fa-border-all"></i> ทั้งหมดใน${group.name.replace(/^\d+\.\s*/, '')}
+        </button>
+    `;
+
+    group.categories.forEach(cat => {
+        html += `
+            <button type="button" class="sub-cat-pill ${selectedCategory === cat ? 'active' : ''}" data-cat="${escapeHtml(cat)}" onclick="switchSubCategory('${escapeHtml(cat)}')">
+                ${escapeHtml(cat)}
+            </button>
+        `;
+    });
+
+    container.innerHTML = html;
 }
 
 function updateQty(eqId, delta) {
@@ -392,8 +528,8 @@ function renderCartCheckoutTable() {
                         <div>${escapeHtml(displayName)}</div>
                         ${needSize ? `
                             <div style="margin-top:0.35rem; display:flex; align-items:center; gap:0.4rem;">
-                                <span style="font-size:0.75rem; color:var(--primary); font-weight:600;"><i class="fa-solid fa-pen-ruler"></i> ขนาด:</span>
-                                <input type="text" class="styled-input" placeholder="ระบุขนาด..." value="${escapeHtml(sizeVal)}" oninput="updateItemSize('${item.id}', this.value); renderCartCheckoutTable();" style="font-size:0.78rem; padding:0.15rem 0.45rem; height:26px; border-radius:4px; max-width:140px; border:1px solid var(--primary);">
+                                <span style="font-size:0.75rem; color:var(--primary); font-weight:600;"><i class="fa-solid fa-pen-ruler"></i> ${escapeHtml(getSizeLabelText(item.name))}</span>
+                                <input type="text" class="styled-input" placeholder="${escapeHtml(getSizePlaceholderText(item.name))}" value="${escapeHtml(sizeVal)}" oninput="updateItemSize('${item.id}', this.value); renderCartCheckoutTable();" style="font-size:0.78rem; padding:0.15rem 0.45rem; height:26px; border-radius:4px; max-width:180px; border:1px solid var(--primary);">
                             </div>
                         ` : ''}
                     </td>
@@ -447,73 +583,105 @@ function renderFormEquipmentChecklist() {
     }
 
     const searchInput = (document.getElementById('form-eq-search')?.value || '').trim().toLowerCase();
-    const categories = ['Set Package', 'อุปกรณ์ทั่วไป', 'Set เครื่องมือ', 'Set เครื่องผ้า', 'ตู้ Ortho', 'ตู้ Neuro', 'ตู้ General', 'ตู้ Plastic', 'ตู้ Ob-gyn', 'ตู้ Uro + Ob-gyn'];
     let html = '';
+    let totalRenderedItems = 0;
 
-    categories.forEach(cat => {
-        if (selectedCategory !== 'all' && selectedCategory !== cat) return;
+    MAIN_GROUPS.forEach(group => {
+        // If a specific main group is selected and this isn't it, skip
+        if (selectedMainGroup !== 'all' && selectedMainGroup !== group.id) return;
 
-        const catItems = equipmentList.filter(item => {
-            if (item.active === false) return false;
-            if (item.category !== cat) return false;
-            if (searchInput && !item.name.toLowerCase().includes(searchInput)) return false;
-            return true;
-        });
+        let groupItemsHtml = '';
+        let groupTotalItems = 0;
 
-        if (catItems.length > 0) {
-            html += `<div class="category-section-title" style="font-weight:700; color:var(--primary); margin: 1rem 0 0.5rem 0;"><i class="fa-solid fa-layer-group"></i> หมวด: ${escapeHtml(cat)} (${catItems.length} รายการ)</div>`;
-            html += `<div class="equipment-checklist-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap:0.75rem;">`;
+        group.categories.forEach(cat => {
+            // If a specific sub-category is selected and this isn't it, skip
+            if (selectedCategory !== 'all' && selectedCategory !== cat) return;
 
-            catItems.forEach(item => {
-                const qty = selectedQty[item.id] || 0;
-                const isSelected = qty > 0;
-                const needSize = hasSizePlaceholder(item.name);
-                const sizeVal = selectedSizes[item.id] || '';
-
-                html += `
-                    <div class="eq-check-card ${isSelected ? 'selected' : ''}" id="eq-card-${item.id}" style="background:var(--bg-card); border:1px solid var(--border-color); padding:0.7rem 0.85rem; border-radius:10px; display:flex; flex-direction:column; gap:0.4rem; transition:all 0.2s ease;">
-                        <div style="display:flex; align-items:center; justify-content:space-between; gap:0.5rem; width:100%;">
-                            <label class="eq-label-container" style="display:flex; align-items:center; gap:0.7rem; flex:1; cursor:pointer; min-width:0; margin:0;">
-                                <input type="checkbox" class="custom-eq-checkbox" id="eq-check-${item.id}" ${isSelected ? 'checked' : ''} onchange="toggleQtyFromCheckbox('${item.id}', this.checked)">
-                                <span class="custom-check-box"><i class="fa-solid fa-check"></i></span>
-                                <div class="eq-info-block" style="display:flex; flex-direction:column; justify-content:center; min-width:0; overflow:hidden;">
-                                    <span class="eq-item-name" style="font-weight:600; font-size:0.9rem; color:var(--text-primary); line-height:1.25; word-break:break-word;">${escapeHtml(item.name)}</span>
-                                    <span class="eq-item-cat-sub" style="font-size:0.75rem; color:var(--text-muted); margin-top:0.15rem;">${escapeHtml(item.category)}</span>
-                                </div>
-                            </label>
-                            <div class="qty-counter-control" style="display:flex; align-items:center; gap:0.35rem; flex-shrink:0;">
-                                <button type="button" class="qty-btn minus" onclick="updateQty('${item.id}', -1)" style="border:1px solid var(--border-color); background:var(--bg-main); width:28px; height:28px; border-radius:6px; cursor:pointer; font-size:0.8rem;"><i class="fa-solid fa-minus"></i></button>
-                                <span class="qty-number-display" id="qty-val-${item.id}" style="min-width:22px; text-align:center; font-weight:700; font-size:0.95rem;">${qty}</span>
-                                <button type="button" class="qty-btn plus" onclick="updateQty('${item.id}', 1)" style="border:1px solid var(--border-color); background:var(--bg-main); width:28px; height:28px; border-radius:6px; cursor:pointer; font-size:0.8rem;"><i class="fa-solid fa-plus"></i></button>
-                            </div>
-                        </div>
-                        ${(isSelected && needSize) ? `
-                            <div class="eq-size-input-wrapper" id="eq-size-box-${item.id}" style="padding-top:0.35rem; border-top:1px dashed var(--border-color); width:100%;" onclick="event.stopPropagation();">
-                                <div style="display:flex; align-items:center; gap:0.4rem;">
-                                    <span style="font-size:0.8rem; color:var(--primary); font-weight:600; white-space:nowrap;"><i class="fa-solid fa-pen-ruler"></i> ระบุขนาด:</span>
-                                    <input type="text" 
-                                           class="styled-input eq-size-input" 
-                                           id="eq-size-${item.id}" 
-                                           placeholder="เช่น 15, 10 mm, No.2..." 
-                                           value="${escapeHtml(sizeVal)}" 
-                                           oninput="updateItemSize('${item.id}', this.value)" 
-                                           style="padding:0.25rem 0.55rem; font-size:0.82rem; flex:1; height:30px; border-radius:6px; border:1.5px solid var(--primary); background:var(--bg-card); color:var(--text-primary);">
-                                </div>
-                            </div>
-                        ` : ''}
-                    </div>
-                `;
+            const catItems = equipmentList.filter(item => {
+                if (item.active === false) return false;
+                if (item.category !== cat) return false;
+                if (searchInput && !item.name.toLowerCase().includes(searchInput)) return false;
+                return true;
             });
 
-            html += `</div>`;
+            if (catItems.length > 0) {
+                groupTotalItems += catItems.length;
+                totalRenderedItems += catItems.length;
+
+                let catHtml = `
+                    <div class="category-section-title" style="font-weight:700; color:var(--primary); margin: 1.1rem 0 0.5rem 0; display:flex; align-items:center; gap:0.4rem; font-size:0.92rem;">
+                        <i class="fa-solid fa-folder-open" style="color:var(--primary);"></i> หมวด: ${escapeHtml(cat)} 
+                        <span style="font-size:0.75rem; background:var(--primary-light); color:var(--primary); padding:1px 8px; border-radius:99px; font-weight:600;">${catItems.length} รายการ</span>
+                    </div>
+                    <div class="equipment-checklist-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap:0.75rem;">
+                `;
+
+                catItems.forEach(item => {
+                    const qty = selectedQty[item.id] || 0;
+                    const isSelected = qty > 0;
+                    const needSize = hasSizePlaceholder(item.name);
+                    const sizeVal = selectedSizes[item.id] || '';
+
+                    catHtml += `
+                        <div class="eq-check-card ${isSelected ? 'selected' : ''}" id="eq-card-${item.id}" style="background:var(--bg-card); border:1px solid var(--border-color); padding:0.7rem 0.85rem; border-radius:10px; display:flex; flex-direction:column; gap:0.4rem; transition:all 0.2s ease;">
+                            <div style="display:flex; align-items:center; justify-content:space-between; gap:0.5rem; width:100%;">
+                                <label class="eq-label-container" style="display:flex; align-items:center; gap:0.7rem; flex:1; cursor:pointer; min-width:0; margin:0;">
+                                    <input type="checkbox" class="custom-eq-checkbox" id="eq-check-${item.id}" ${isSelected ? 'checked' : ''} onchange="toggleQtyFromCheckbox('${item.id}', this.checked)">
+                                    <span class="custom-check-box"><i class="fa-solid fa-check"></i></span>
+                                    <div class="eq-info-block" style="display:flex; flex-direction:column; justify-content:center; min-width:0; overflow:hidden;">
+                                        <span class="eq-item-name" style="font-weight:600; font-size:0.9rem; color:var(--text-primary); line-height:1.25; word-break:break-word;">${escapeHtml(item.name)}</span>
+                                        <span class="eq-item-cat-sub" style="font-size:0.75rem; color:var(--text-muted); margin-top:0.15rem;">${escapeHtml(item.category)}</span>
+                                    </div>
+                                </label>
+                                <div class="qty-counter-control" style="display:flex; align-items:center; gap:0.35rem; flex-shrink:0;">
+                                    <button type="button" class="qty-btn minus" onclick="updateQty('${item.id}', -1)" style="border:1px solid var(--border-color); background:var(--bg-main); width:28px; height:28px; border-radius:6px; cursor:pointer; font-size:0.8rem;"><i class="fa-solid fa-minus"></i></button>
+                                    <span class="qty-number-display" id="qty-val-${item.id}" style="min-width:22px; text-align:center; font-weight:700; font-size:0.95rem;">${qty}</span>
+                                    <button type="button" class="qty-btn plus" onclick="updateQty('${item.id}', 1)" style="border:1px solid var(--border-color); background:var(--bg-main); width:28px; height:28px; border-radius:6px; cursor:pointer; font-size:0.8rem;"><i class="fa-solid fa-plus"></i></button>
+                                </div>
+                            </div>
+                            ${(isSelected && needSize) ? `
+                                <div class="eq-size-input-wrapper" id="eq-size-box-${item.id}" style="padding-top:0.35rem; border-top:1px dashed var(--border-color); width:100%;" onclick="event.stopPropagation();">
+                                    <div style="display:flex; align-items:center; gap:0.4rem;">
+                                        <span style="font-size:0.8rem; color:var(--primary); font-weight:600; white-space:nowrap;"><i class="fa-solid fa-pen-ruler"></i> ${escapeHtml(getSizeLabelText(item.name))}</span>
+                                        <input type="text" 
+                                               class="styled-input eq-size-input" 
+                                               id="eq-size-${item.id}" 
+                                               placeholder="${escapeHtml(getSizePlaceholderText(item.name))}" 
+                                               value="${escapeHtml(sizeVal)}" 
+                                               oninput="updateItemSize('${item.id}', this.value)" 
+                                               style="padding:0.25rem 0.55rem; font-size:0.82rem; flex:1; height:30px; border-radius:6px; border:1.5px solid var(--primary); background:var(--bg-card); color:var(--text-primary);">
+                                    </div>
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                });
+
+                catHtml += `</div>`;
+                groupItemsHtml += catHtml;
+            }
+        });
+
+        if (groupItemsHtml) {
+            // If viewing All, show a nice prominent section header for each group
+            if (selectedMainGroup === 'all') {
+                html += `
+                    <div class="main-group-section-header">
+                        <h3><i class="${group.icon}"></i> ${group.name}</h3>
+                        <span class="group-sub-desc">${group.desc} (${groupTotalItems} รายการ)</span>
+                    </div>
+                `;
+            }
+            html += groupItemsHtml;
         }
     });
 
-    if (!html) {
+    if (!html || totalRenderedItems === 0) {
         html = `
-            <div class="empty-search-state" style="text-align:center; padding: 2rem 0; color:var(--text-muted);">
-                <i class="fa-solid fa-magnifying-glass" style="font-size:1.8rem; margin-bottom:0.5rem;"></i>
-                <p>ไม่พบอุปกรณ์ตามคำค้นหาในหมวดหมู่นี้</p>
+            <div class="empty-search-state" style="text-align:center; padding: 2.5rem 1rem; color:var(--text-muted);">
+                <i class="fa-solid fa-magnifying-glass" style="font-size:2rem; margin-bottom:0.75rem; color:var(--primary); opacity:0.6; display:block;"></i>
+                <h4 style="font-size:1rem; color:var(--text-primary); margin-bottom:0.25rem;">ไม่พบรายการอุปกรณ์ตามเงื่อนไขที่เลือก</h4>
+                <p style="font-size:0.85rem;">ลองเปลี่ยนคำค้นหา หรือเลือกแท็บ "ทั้งหมด" ด้านบน</p>
             </div>
         `;
     }
@@ -642,6 +810,11 @@ function renderStatusTrackerCards() {
                     <div style="font-size:0.8rem; color:var(--text-muted); margin-top:0.25rem;">
                         <i class="fa-solid fa-boxes-stacked" style="color:var(--primary);"></i> รายการ: <strong>${eqList.length}</strong> รายการ (${totalQty} ชิ้น)
                     </div>
+                    ${(record.prepNotes && record.prepNotes.trim()) ? `
+                        <div style="margin-top:0.45rem; padding:0.45rem 0.65rem; background:#eff6ff; border:1px solid #bfdbfe; border-left:3.5px solid #0284c7; border-radius:6px; font-size:0.82rem; color:#1e40af; line-height:1.35;">
+                            <i class="fa-solid fa-bullhorn" style="color:#0284c7;"></i> <strong>ข้อความจากผู้จัดเตรียม:</strong> ${escapeHtml(record.prepNotes)}
+                        </div>
+                    ` : ''}
                 </td>
                 <td style="text-align:center;">
                     ${getStatusBadgeMobile(record.status)}
@@ -665,7 +838,7 @@ function getStatusBadgeMobile(status) {
         case 'ready':
             return `<span class="m-status-pill ready"><i class="fa-solid fa-circle-check"></i> จัดเสร็จแล้ว (พร้อมรับ)</span>`;
         case 'borrowed':
-            return `<span class="m-status-pill borrowed"><i class="fa-solid fa-hand-holding-hand"></i> ถูกยืมไปแล้ว</span>`;
+            return `<span class="m-status-pill borrowed"><i class="fa-solid fa-hand-holding-hand"></i> รับของแล้ว</span>`;
         case 'returned':
             return `<span class="m-status-pill returned"><i class="fa-solid fa-rotate-left"></i> คืนเสร็จสิ้น</span>`;
         default:
@@ -688,6 +861,7 @@ function openBorrowerDocModal(recordId) {
     if (!modal || !container) return;
 
     const eqList = record.instruments || record.equipmentList || [];
+    const checkedIndices = record.borrowerCheckedIndices || [];
     let totalQty = 0;
 
     let itemsHtml = '';
@@ -695,13 +869,19 @@ function openBorrowerDocModal(recordId) {
         const qty = eq.qty || eq.quantity || 1;
         totalQty += qty;
         const catName = eq.category || 'อุปกรณ์ผ่าตัด';
+        const isChecked = checkedIndices.includes(idx);
+
         itemsHtml += `
-            <tr style="border-bottom: 1px solid #cbd5e1; font-size: 0.9rem;">
+            <tr class="borrower-check-row ${isChecked ? 'checked' : ''}" onclick="toggleBorrowerCheckItem('${record.id}', ${idx})" title="คลิกเพื่อติ๊กถูกตรวจรับชิ้นนี้" style="border-bottom: 1px solid #cbd5e1; font-size: 0.9rem; cursor:pointer; background:${isChecked ? 'rgba(16, 185, 129, 0.08)' : 'transparent'}; transition:all 0.15s ease;">
                 <td style="padding: 0.6rem 0.75rem; text-align: center; border: 1px solid #cbd5e1; color: #475569;">${idx + 1}</td>
                 <td style="padding: 0.6rem 0.75rem; border: 1px solid #cbd5e1;"><span style="background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 99px; font-size: 0.75rem; font-weight: 600;">${escapeHtml(catName)}</span></td>
-                <td style="padding: 0.6rem 0.75rem; font-weight: 600; border: 1px solid #cbd5e1; color: #0f172a;">${escapeHtml(eq.name)}</td>
+                <td style="padding: 0.6rem 0.75rem; font-weight: 600; border: 1px solid #cbd5e1; color: ${isChecked ? '#10b981' : '#0f172a'};">${escapeHtml(eq.name)}</td>
                 <td style="padding: 0.6rem 0.75rem; text-align: center; font-weight: 700; color: #0284c7; border: 1px solid #cbd5e1; font-size: 0.95rem;">${qty}</td>
-                <td style="padding: 0.6rem 0.75rem; text-align: center; border: 1px solid #cbd5e1;"><span class="print-check-box" style="width:20px; height:20px; border:2px solid #64748b; border-radius:4px; display:inline-block;"></span></td>
+                <td style="padding: 0.6rem 0.75rem; text-align: center; border: 1px solid #cbd5e1;">
+                    <span class="prep-check-box-interactive" style="width:20px; height:20px; border-radius:4px; border:2px solid ${isChecked ? '#10b981' : '#64748b'}; background:${isChecked ? '#10b981' : '#ffffff'}; color:${isChecked ? '#ffffff' : 'transparent'}; display:inline-flex; align-items:center; justify-content:center; font-size:0.75rem;">
+                        <i class="fa-solid fa-check"></i>
+                    </span>
+                </td>
             </tr>
         `;
     });
@@ -722,16 +902,16 @@ function openBorrowerDocModal(recordId) {
     let statusThai = 'อยู่ระหว่างจัดเตรียม';
     let statusColor = '#f59e0b';
     if (record.status === 'ready') { statusThai = 'จัดเตรียมเสร็จแล้ว (พร้อมรับ)'; statusColor = '#10b981'; }
-    else if (record.status === 'borrowed') { statusThai = 'ถูกยืมไปใช้งานแล้ว'; statusColor = '#0284c7'; }
+    else if (record.status === 'borrowed') { statusThai = 'รับของแล้ว (รับมอบแล้ว)'; statusColor = '#0284c7'; }
     else if (record.status === 'returned') { statusThai = 'ส่งคืนเรียบร้อยแล้ว'; statusColor = '#64748b'; }
 
     container.innerHTML = `
         <div class="print-doc-header" style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #0284c7; padding-bottom:1rem; margin-bottom:1.25rem;">
             <div class="print-header-brand" style="display:flex; align-items:center; gap:0.85rem;">
-                <i class="fa-solid fa-hospital-user" style="color:#0284c7; font-size:2.2rem;"></i>
+                <img src="hospital_logo.jpg" alt="โรงพยาบาลพุทธชินราช พิษณุโลก" style="height:52px; width:auto; object-fit:contain; border-radius:4px;">
                 <div>
                     <h2 style="margin:0; font-size:1.3rem; font-weight:700; color:#0f172a;">ใบคำขอเบิกเครื่องมือผ่าตัด</h2>
-                    <p style="margin:2px 0 0 0; font-size:0.85rem; color:#64748b;">Surgical Instrument Requisition & Handover Slip (ฝ่ายห้องผ่าตัด OR)</p>
+                    <p style="margin:2px 0 0 0; font-size:0.85rem; color:#64748b;">Surgical Instrument Requisition Slip - โรงพยาบาลพุทธชินราช พิษณุโลก</p>
                 </div>
             </div>
             <div class="print-doc-ref" style="text-align:right;">
@@ -750,9 +930,12 @@ function openBorrowerDocModal(recordId) {
         </div>
 
         <div style="margin-top: 1rem;">
-            <h4 style="margin: 0 0 0.6rem 0; font-size: 0.95rem; color: #0f172a; display:flex; align-items:center; gap:0.4rem;">
-                <i class="fa-solid fa-list-check" style="color:#0284c7;"></i> รายการเครื่องมือและอุปกรณ์ผ่าตัดที่ขอเบิก
-            </h4>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.6rem;">
+                <h4 style="margin: 0; font-size: 0.95rem; color: #0f172a; display:flex; align-items:center; gap:0.4rem;">
+                    <i class="fa-solid fa-list-check" style="color:#0284c7;"></i> รายการเครื่องมือและอุปกรณ์ผ่าตัดที่ขอเบิก
+                </h4>
+                <span style="font-size:0.78rem; color:#64748b;">(คลิกที่รายการบนจอเพื่อติ๊กตรวจรับ)</span>
+            </div>
             <table class="print-checklist-table" style="width:100%; border-collapse:collapse; font-size:0.88rem;">
                 <thead>
                     <tr style="background:#e0f2fe; color:#0369a1;">
@@ -778,7 +961,13 @@ function openBorrowerDocModal(recordId) {
 
         ${record.notes ? `
         <div style="margin-top:0.85rem; padding:0.65rem 0.85rem; background:#fffbeb; border:1px solid #fef3c7; border-left:4px solid #f59e0b; border-radius:6px; font-size:0.85rem; color:#92400e;">
-            <strong><i class="fa-solid fa-comment-medical"></i> หมายเหตุเพิ่มเติม:</strong> ${escapeHtml(record.notes)}
+            <strong><i class="fa-solid fa-comment-medical"></i> หมายเหตุจากผู้เบิก:</strong> ${escapeHtml(record.notes)}
+        </div>
+        ` : ''}
+
+        ${(record.prepNotes && record.prepNotes.trim()) ? `
+        <div style="margin-top:0.85rem; padding:0.65rem 0.85rem; background:#eff6ff; border:1.5px solid #bfdbfe; border-left:4px solid #0284c7; border-radius:6px; font-size:0.85rem; color:#1e40af;">
+            <strong><i class="fa-solid fa-bullhorn"></i> หมายเหตุจากผู้จัดเตรียม (ห้อง Prep):</strong> ${escapeHtml(record.prepNotes)}
         </div>
         ` : ''}
 
@@ -801,8 +990,62 @@ function openBorrowerDocModal(recordId) {
         </div>
     `;
 
+    // Update Confirm Received Button state
+    const btnConfirm = document.getElementById('btn-confirm-received');
+    if (btnConfirm) {
+        if (record.status === 'borrowed') {
+            btnConfirm.innerHTML = '<i class="fa-solid fa-check-double"></i> ได้รับของครบถ้วนแล้ว';
+            btnConfirm.style.background = 'linear-gradient(135deg, #059669 0%, #047857 100%)';
+            btnConfirm.disabled = false;
+        } else if (record.status === 'returned') {
+            btnConfirm.innerHTML = '<i class="fa-solid fa-rotate-left"></i> คืนอุปกรณ์เรียบร้อย';
+            btnConfirm.style.background = '#64748b';
+            btnConfirm.disabled = true;
+        } else {
+            btnConfirm.innerHTML = '<i class="fa-solid fa-circle-check"></i> ได้รับของครบถ้วน (ยืนยันรับมอบ)';
+            btnConfirm.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+            btnConfirm.disabled = false;
+        }
+    }
+
     modal.style.display = 'flex';
     modal.classList.add('open');
+}
+
+function toggleBorrowerCheckItem(recordId, index) {
+    const record = borrowRecords.find(r => r.id === recordId);
+    if (!record) return;
+
+    record.borrowerCheckedIndices = record.borrowerCheckedIndices || [];
+    const pos = record.borrowerCheckedIndices.indexOf(index);
+    if (pos > -1) {
+        record.borrowerCheckedIndices.splice(pos, 1);
+    } else {
+        record.borrowerCheckedIndices.push(index);
+    }
+
+    saveRecordsToStorage();
+    openBorrowerDocModal(recordId);
+}
+
+function confirmAllItemsReceived() {
+    if (!currentDocRecordId) return;
+    const record = borrowRecords.find(r => r.id === currentDocRecordId);
+    if (!record) return;
+
+    record.status = 'borrowed';
+    record.receivedAt = new Date().toISOString();
+
+    // Mark all items as checked for borrower
+    const eqList = record.instruments || record.equipmentList || [];
+    record.borrowerCheckedIndices = eqList.map((_, i) => i);
+
+    saveRecordsToStorage();
+    renderStatusTrackerCards();
+
+    alert(`ยืนยันการรับมอบอุปกรณ์ห้อง ${record.orRoom} ครบถ้วนเรียบร้อยแล้ว!\nระบบได้เปลี่ยนสถานะเป็น "รับของแล้ว" เรียบร้อยครับ`);
+
+    openBorrowerDocModal(currentDocRecordId);
 }
 
 function closeBorrowerDocModal() {
@@ -845,5 +1088,21 @@ function setupThemeFromPreferences() {
     if (savedTheme === 'dark') {
         document.body.classList.remove('light-mode');
         document.body.classList.add('dark-mode');
+    }
+}
+
+function openLogoLightbox() {
+    const modal = document.getElementById('logo-lightbox-modal');
+    if (modal) {
+        modal.style.display = 'flex';
+        modal.classList.add('open');
+    }
+}
+
+function closeLogoLightbox() {
+    const modal = document.getElementById('logo-lightbox-modal');
+    if (modal) {
+        modal.style.display = 'none';
+        modal.classList.remove('open');
     }
 }

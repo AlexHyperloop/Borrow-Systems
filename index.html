@@ -21,9 +21,10 @@
     <!-- Top Navigation Header (สำหรับระบบห้องจัดเตรียมอุปกรณ์) -->
     <header class="app-header">
         <div class="header-container">
-            <div class="brand-logo">
-                <div class="logo-icon">
-                    <i class="fa-solid fa-boxes-packing"></i>
+            <div class="brand-logo" onclick="openLogoLightbox()" title="คลิกเพื่อดูภาพขยายตราหน่วยงาน">
+                <div class="brand-hospital-logo-container">
+                    <img src="hospital_logo.jpg" alt="โรงพยาบาลพุทธชินราช พิษณุโลก" class="brand-hospital-logo">
+                    <div class="logo-shimmer-effect"></div>
                 </div>
                 <div class="brand-text">
                     <h1>ระบบห้องจัดเตรียมเครื่องมือผ่าตัด</h1>
@@ -117,12 +118,12 @@
                         </div>
                     </div>
 
-                    <!-- OR Room Filter Dropdown (1-20) -->
+                    <!-- OR Room Filter Dropdown -->
                     <div class="filter-group">
                         <label for="or-room-filter"><i class="fa-solid fa-door-closed"></i> ห้องผ่าตัด:</label>
                         <select id="or-room-filter" onchange="handleSearchFilter()" class="styled-select">
-                            <option value="">ทุกห้องผ่าตัด (OR 1 - 20)</option>
-                            <!-- JS populated OR 1 - OR 20 -->
+                            <option value="">ทุกห้องผ่าตัด</option>
+                            <!-- JS populated OR rooms -->
                         </select>
                     </div>
 
@@ -267,26 +268,31 @@
         </div>
     </div>
 
-    <!-- Modal 3: พิมพ์ใบ Checklist จัดเตรียมเครื่องมือ (Print Prep Checklist Modal) -->
+    <!-- Modal 3: พิมพ์ใบ Checklist จัดเตรียมเครื่องมือ & ยืนยันจัดเสร็จ (Prep Checklist & Handover Modal) -->
     <div class="modal-backdrop" id="checklist-print-modal" style="display: none;">
         <div class="modal-card modal-lg">
             <div class="modal-header">
                 <div class="modal-title">
-                    <i class="fa-solid fa-print"></i>
-                    <h3>ตัวอย่างใบจัดเตรียมเครื่องมือผ่าตัด (Prep Checklist)</h3>
+                    <i class="fa-solid fa-clipboard-check" style="color:var(--primary);"></i>
+                    <h3>ใบจัดเตรียมเครื่องมือผ่าตัด (Prep Checklist)</h3>
                 </div>
                 <button class="modal-close-btn" onclick="closeChecklistModal()"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="modal-body">
                 <div class="checklist-paper-preview" id="printable-checklist-container">
-                    <!-- Dynamic Printable Document Content -->
+                    <!-- Dynamic Printable Document Content with Interactive Checkboxes -->
                 </div>
 
-                <div class="modal-footer">
-                    <button type="button" class="btn-secondary" onclick="closeChecklistModal()">ปิด</button>
-                    <button type="button" class="btn-primary" onclick="triggerChecklistPrint()">
-                        <i class="fa-solid fa-print"></i> พิมพ์ใบ Checklist (หรือบันทึก PDF)
-                    </button>
+                <div class="modal-footer" style="margin-top:1.25rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem;">
+                    <button type="button" class="btn-secondary" onclick="closeChecklistModal()">ปิดหน้าต่าง</button>
+                    <div style="display:flex; gap:0.6rem; align-items:center; flex-wrap:wrap;">
+                        <button type="button" class="btn-outline" onclick="triggerChecklistPrint()">
+                            <i class="fa-solid fa-print"></i> พิมพ์ใบ Checklist (หรือ PDF)
+                        </button>
+                        <button type="button" class="btn-primary" id="btn-mark-ready-modal" onclick="markCurrentRecordAsReady()" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border:none; box-shadow:0 4px 14px rgba(16, 185, 129, 0.35); font-weight:700;">
+                            <i class="fa-solid fa-circle-check"></i> จัดเตรียมเสร็จแล้ว (พร้อมรับ)
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -466,6 +472,26 @@
             <div class="modal-footer">
                 <button type="button" class="btn-secondary" onclick="closeBackupModal()">ปิด</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Modal: ขยายภาพโลโก้หน่วยงาน (Logo Lightbox Modal) -->
+    <div class="modal-backdrop" id="logo-lightbox-modal" style="display: none;" onclick="closeLogoLightbox()">
+        <div class="modal-card" style="max-width: 680px; text-align: center; padding: 1.5rem; background: var(--bg-card);" onclick="event.stopPropagation();">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem;">
+                <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--primary); font-weight: 700; font-size: 1.1rem;">
+                    <i class="fa-solid fa-hospital"></i> ตราสัญลักษณ์หน่วยงาน
+                </div>
+                <button class="modal-close-btn" onclick="closeLogoLightbox()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div style="padding: 1.25rem; background: #ffffff; border-radius: 12px; box-shadow: inset 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 1.25rem; border: 1px solid var(--border-color);">
+                <img src="hospital_logo.jpg" alt="โรงพยาบาลพุทธชินราช พิษณุโลก" style="width: 100%; height: auto; max-height: 280px; object-fit: contain; border-radius: 8px;">
+            </div>
+            <h3 style="font-size: 1.2rem; color: var(--text-primary); margin-bottom: 0.35rem; font-weight: 700;">โรงพยาบาลพุทธชินราช พิษณุโลก</h3>
+            <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1.25rem;">ภารกิจด้านการพยาบาล & กลุ่มงานห้องผ่าตัด (Operating Room Division)</p>
+            <button type="button" class="btn-primary" onclick="closeLogoLightbox()" style="margin: 0 auto; padding: 0.55rem 2rem;">
+                <i class="fa-solid fa-check"></i> ปิดหน้าต่าง
+            </button>
         </div>
     </div>
 

@@ -163,10 +163,17 @@ function setupORRoomDropdowns() {
     const filterSelect = document.getElementById('or-room-filter');
     if (!filterSelect) return;
     
-    filterSelect.innerHTML = '<option value="">ทุกห้องผ่าตัด (OR 1 - 20)</option>';
-    for (let i = 1; i <= 20; i++) {
-        filterSelect.innerHTML += `<option value="OR ${i}">OR ${i}</option>`;
-    }
+    const OR_ROOMS = [
+        'OR 1', 'OR 2', 'OR 3', 'OR 4', 'OR 5',
+        'OR 6', 'OR 7', 'OR 8', 'OR 9', 'OR 10',
+        'OR 11', 'OR 12A', 'OR 12B', 'OR 13', 'OR 14',
+        'OR 15', 'OR 16', 'OR 17', 'OR 18', 'OR 19', 'OR 20'
+    ];
+
+    filterSelect.innerHTML = '<option value="">ทุกห้องผ่าตัด</option>';
+    OR_ROOMS.forEach(room => {
+        filterSelect.innerHTML += `<option value="${room}">${room}</option>`;
+    });
 }
 
 function setFilterStatus(status) {
@@ -345,37 +352,26 @@ function renderBorrowTable() {
             let statusHtml = '';
             if (record.status === 'pending') statusHtml = '<span class="status-badge pending"><i class="fa-solid fa-clock"></i> อยู่ระหว่างจัดเตรียม</span>';
             else if (record.status === 'ready') statusHtml = '<span class="status-badge ready"><i class="fa-solid fa-check-circle"></i> จัดเสร็จแล้ว</span>';
-            else if (record.status === 'borrowed') statusHtml = '<span class="status-badge overdue"><i class="fa-solid fa-hand-holding-hand"></i> ถูกยืมไปแล้ว</span>';
+            else if (record.status === 'borrowed') statusHtml = '<span class="status-badge overdue"><i class="fa-solid fa-hand-holding-hand"></i> รับของแล้ว</span>';
             else if (record.status === 'returned') statusHtml = '<span class="status-badge returned"><i class="fa-solid fa-rotate-left"></i> คืนแล้ว</span>';
             
             let actionBtns = '';
-            let printBtn = `<button class="btn-outline btn-sm" onclick="printBorrowDocument('${record.id}')" title="พิมพ์ใบจัดเตรียม"><i class="fa-solid fa-print"></i></button>`;
+            let prepBtn = `<button class="btn-prep-tool" onclick="printBorrowDocument('${record.id}')" title="เปิดใบจัดเครื่องมือและตรวจนับ">
+                <i class="fa-solid fa-clipboard-check"></i> จัดเครื่องมือ
+            </button>`;
             let deleteBtn = `<button class="btn-danger btn-sm" onclick="deleteBorrowRecord('${record.id}')" title="ลบรายการเบิกนี้"><i class="fa-solid fa-trash-can"></i></button>`;
             
-            if (record.status === 'pending') {
+            if (record.status === 'borrowed') {
                 actionBtns = `
-                    <button class="btn-ready-action" onclick="updateRecordStatus('${record.id}', 'ready')">
-                        <i class="fa-solid fa-check"></i> จัดเตรียมเรียบร้อย
-                    </button>
-                    ${printBtn}
-                    ${deleteBtn}
-                `;
-            } else if (record.status === 'ready') {
-                actionBtns = `
-                    ${printBtn}
-                    ${deleteBtn}
-                `;
-            } else if (record.status === 'borrowed') {
-                actionBtns = `
-                    <button class="btn-success btn-sm" onclick="openReturnModal('${record.id}')">
+                    <button class="btn-success btn-sm" onclick="openReturnModal('${record.id}')" title="รับคืนอุปกรณ์">
                         <i class="fa-solid fa-rotate-left"></i> รับคืน
                     </button>
-                    ${printBtn}
+                    ${prepBtn}
                     ${deleteBtn}
                 `;
             } else {
                 actionBtns = `
-                    ${printBtn}
+                    ${prepBtn}
                     ${deleteBtn}
                 `;
             }
@@ -553,6 +549,50 @@ function printQRCode() {
 }
 
 let currentPrintRecordId = null;
+
+// 3 Distinct Zones for Prep Checklist Modal
+const PREP_ZONES = [
+    {
+        id: 'package',
+        title: '1. รายการอุปกรณ์ - Set Package',
+        icon: 'fa-solid fa-box-archive',
+        color: '#7c3aed',
+        bg: '#f5f3ff',
+        badgeBg: '#ede9fe',
+        badgeColor: '#6d28d9'
+    },
+    {
+        id: 'linen',
+        title: '2. รายการอุปกรณ์ - ห้องผ้า (Set เครื่องมือ, Set เครื่องผ้า, ตู้เครื่องมือ)',
+        icon: 'fa-solid fa-shirt',
+        color: '#0284c7',
+        bg: '#f0f9ff',
+        badgeBg: '#e0f2fe',
+        badgeColor: '#0369a1'
+    },
+    {
+        id: 'stock',
+        title: '3. รายการอุปกรณ์ - ห้อง Stock (อุปกรณ์ทั่วไป)',
+        icon: 'fa-solid fa-boxes-packing',
+        color: '#d97706',
+        bg: '#fffbeb',
+        badgeBg: '#fef3c7',
+        badgeColor: '#b45309'
+    }
+];
+
+function getItemPrepZone(category) {
+    if (!category) return 'stock';
+    if (category === 'Set Package' || /package/i.test(category)) {
+        return 'package';
+    }
+    if (category === 'อุปกรณ์ทั่วไป' || /ทั่วไป|stock/i.test(category)) {
+        return 'stock';
+    }
+    // Set เครื่องมือ, Set เครื่องผ้า, ตู้ต่างๆ belong to linen room
+    return 'linen';
+}
+
 function printBorrowDocument(id) {
     currentPrintRecordId = id;
     const record = borrowRecords.find(r => r.id === id);
@@ -562,53 +602,214 @@ function printBorrowDocument(id) {
     if (!container) return;
     
     const eqList = record.equipmentList || record.instruments || [];
-    let eqListHtml = eqList.map(eq => `
-        <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed #ccc; padding: 0.5rem 0;">
-            <span><i class="fa-regular fa-square"></i> ${eq.name}</span>
-            <span>${eq.qty || eq.quantity || 1} ชิ้น</span>
-        </div>
-    `).join('');
-    
+    const checkedIndices = record.prepCheckedIndices || [];
+    const checkedCount = checkedIndices.length;
+    const totalCount = eqList.length;
+    const progressPercent = totalCount > 0 ? Math.round((checkedCount / totalCount) * 100) : 0;
+
+    let zonesHtml = '';
+    PREP_ZONES.forEach(zone => {
+        const zoneItems = [];
+        eqList.forEach((eq, originalIdx) => {
+            if (getItemPrepZone(eq.category) === zone.id) {
+                zoneItems.push({ eq, originalIdx });
+            }
+        });
+
+        if (zoneItems.length > 0) {
+            const zoneCheckedCount = zoneItems.filter(item => checkedIndices.includes(item.originalIdx)).length;
+            const zoneTotalQty = zoneItems.reduce((sum, item) => sum + (item.eq.qty || item.eq.quantity || 1), 0);
+
+            let itemsRows = zoneItems.map(({ eq, originalIdx }) => {
+                const isChecked = checkedIndices.includes(originalIdx);
+                const qty = eq.qty || eq.quantity || 1;
+                const cat = eq.category ? `<span style="font-size:0.75rem; color:${zone.badgeColor}; background:${zone.badgeBg}; padding:2px 7px; border-radius:4px; margin-right:0.4rem; font-weight:600;">${escapeHtml(eq.category)}</span>` : '';
+                
+                return `
+                    <div class="prep-check-row ${isChecked ? 'checked' : ''}" onclick="togglePrepCheckItem('${record.id}', ${originalIdx})" title="คลิกเพื่อติ๊กถูกว่าจัดเตรียมชิ้นนี้แล้ว">
+                        <div style="display:flex; align-items:center; gap:0.75rem; flex:1; min-width:0;">
+                            <span class="prep-check-box-interactive">
+                                <i class="fa-solid fa-check"></i>
+                            </span>
+                            <div style="min-width:0; overflow:hidden;">
+                                <span class="prep-check-item-name" style="font-weight:600; font-size:0.92rem;">${cat}${escapeHtml(eq.name)}</span>
+                            </div>
+                        </div>
+                        <div style="font-weight:700; color:${zone.color}; font-size:0.95rem; margin-left:1rem; white-space:nowrap;">
+                            ${qty} ชิ้น
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            zonesHtml += `
+                <div class="prep-zone-card" style="margin-bottom:1rem; border:1.5px solid ${zone.color}35; border-radius:8px; overflow:hidden;">
+                    <div class="prep-zone-header" style="background:${zone.bg}; color:${zone.color}; border-bottom:1px solid ${zone.color}25; padding:0.6rem 0.85rem; display:flex; justify-content:space-between; align-items:center;">
+                        <h5 style="margin:0; font-size:0.92rem; font-weight:700; display:flex; align-items:center; gap:0.45rem;">
+                            <i class="${zone.icon}"></i> ${zone.title}
+                        </h5>
+                        <span class="prep-zone-count" style="background:#ffffff; color:${zone.color}; border:1px solid ${zone.color}40; font-size:0.75rem; padding:2px 8px; border-radius:99px; font-weight:600;">
+                            จัดแล้ว ${zoneCheckedCount}/${zoneItems.length} รายการ (${zoneTotalQty} ชิ้น)
+                        </span>
+                    </div>
+                    <div style="padding:0.25rem 0.5rem;">
+                        ${itemsRows}
+                    </div>
+                </div>
+            `;
+        }
+    });
+
+    if (!zonesHtml) {
+        zonesHtml = `<div style="text-align:center; padding:1.5rem; color:#64748b;">- ไม่พบรายการอุปกรณ์ -</div>`;
+    }
+
     const useDateStr = record.useDate || record.usageDate;
     const returnDateStr = record.returnDate || record.expectedReturnDate;
+    const reqDateStr = formatDateThai(record.requestDate || record.borrowDate);
+    const reqTimeStr = record.requestTime ? ` เวลา ${record.requestTime} น.` : '';
+
+    let statusText = 'อยู่ระหว่างจัดเตรียม';
+    let statusColor = '#f59e0b';
+    if (record.status === 'ready') { statusText = 'จัดเตรียมเสร็จแล้ว (พร้อมรับ)'; statusColor = '#10b981'; }
+    else if (record.status === 'borrowed') { statusText = 'รับของแล้ว'; statusColor = '#0284c7'; }
+    else if (record.status === 'returned') { statusText = 'ส่งคืนเรียบร้อยแล้ว'; statusColor = '#64748b'; }
 
     container.innerHTML = `
+        <div class="prep-progress-card">
+            <div class="prep-progress-info">
+                <i class="fa-solid fa-list-check" style="color:var(--emerald);"></i>
+                <span>ความคืบหน้าการจัดเครื่องมือ: <strong id="prep-checked-counter" style="color:var(--primary);">${checkedCount}/${totalCount} รายการ</strong> (${progressPercent}%)</span>
+            </div>
+            <div class="prep-progress-bar-bg">
+                <div class="prep-progress-bar-fill" id="prep-progress-bar" style="width: ${progressPercent}%;"></div>
+            </div>
+        </div>
+
         <div class="print-doc-header">
-            <div class="print-header-brand">
-                <i class="fa-solid fa-hospital"></i>
+            <div class="print-header-brand" style="display:flex; align-items:center; gap:0.85rem;">
+                <img src="hospital_logo.jpg" alt="โรงพยาบาลพุทธชินราช พิษณุโลก" style="height:52px; width:auto; object-fit:contain; border-radius:4px;">
                 <div>
                     <h2>ใบจัดเตรียมเครื่องมือผ่าตัด</h2>
-                    <p>Surgical Equipment Prep Checklist</p>
+                    <p>Surgical Equipment Prep Checklist - โรงพยาบาลพุทธชินราช พิษณุโลก</p>
                 </div>
             </div>
-            <div class="print-doc-ref">
-                <div class="print-or-badge">${record.orRoom}</div>
-                <div class="print-ref-id">REF: ${record.id.substring(0,8)}</div>
+            <div class="print-doc-ref" style="text-align:right;">
+                <div class="print-or-badge" style="background:#0284c7; color:#fff; font-size:1.15rem; font-weight:700; padding:0.35rem 0.9rem; border-radius:6px; display:inline-block; margin-bottom:0.25rem;">${record.orRoom}</div>
+                <div class="print-ref-id" style="font-size:0.82rem; color:#64748b; font-weight:600;">REF: ${record.id}</div>
             </div>
         </div>
         <div class="print-info-grid">
-            <div class="print-info-item"><span class="label">ชื่อผู้เบิก:</span><span class="value">${escapeHtml(record.borrowerName)}</span></div>
-            <div class="print-info-item"><span class="label">รหัสพนักงาน:</span><span class="value">${escapeHtml(record.employeeId || '-')}</span></div>
-            <div class="print-info-item"><span class="label">วันที่ใช้:</span><span class="value">${formatDateThai(useDateStr)}</span></div>
-            <div class="print-info-item"><span class="label">กำหนดคืน:</span><span class="value">${formatDateThai(returnDateStr)}</span></div>
+            <div class="print-info-item"><span class="label">ชื่อผู้ขอเบิก:</span><span class="value" style="font-weight:700;">${escapeHtml(record.borrowerName)}</span></div>
+            <div class="print-info-item"><span class="label">ห้องผ่าตัด:</span><span class="value" style="font-weight:700; color:#0284c7;">${escapeHtml(record.orRoom)}</span></div>
+            <div class="print-info-item"><span class="label">เวลายื่นเบิก:</span><span class="value">${reqDateStr}${reqTimeStr}</span></div>
+            <div class="print-info-item"><span class="label">วันที่ต้องการใช้:</span><span class="value">${formatDateThai(useDateStr)}</span></div>
+            <div class="print-info-item"><span class="label">กำหนดส่งคืน:</span><span class="value">${formatDateThai(returnDateStr)}</span></div>
+            <div class="print-info-item"><span class="label">สถานะปัจจุบัน:</span><span class="value" id="modal-status-text" style="font-weight:700; color:${statusColor};">${statusText}</span></div>
         </div>
-        <div style="margin-top: 1.5rem;">
-            <h4 style="margin-bottom: 1rem; border-bottom: 1px solid #000; padding-bottom: 0.5rem;">รายการเครื่องมือ (Checklist)</h4>
-            ${eqListHtml}
+
+        ${record.notes ? `
+        <div style="margin-top:0.85rem; padding:0.65rem 0.85rem; background:#fffbeb; border:1px solid #fef3c7; border-left:4px solid #f59e0b; border-radius:6px; font-size:0.85rem; color:#92400e;">
+            <strong><i class="fa-solid fa-comment-medical"></i> หมายเหตุจากผู้เบิก (ห้อง OR):</strong> ${escapeHtml(record.notes)}
         </div>
-        <div style="margin-top: 3rem; display: flex; justify-content: space-between; text-align: center;">
+        ` : ''}
+
+        <div style="margin-top: 1.25rem;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.6rem; border-bottom:1.5px solid #0f172a; padding-bottom:0.4rem;">
+                <h4 style="margin:0; font-size:0.98rem; font-weight:700; color:#0f172a;"><i class="fa-solid fa-boxes-packing" style="color:var(--primary);"></i> รายการเครื่องมือที่ต้องจัดเตรียม (แบ่งตาม 3 โซน)</h4>
+                <span style="font-size:0.8rem; color:#64748b;">(คลิกที่รายการบนจอเพื่อติ๊กตรวจนับ)</span>
+            </div>
+            <div id="prep-checklist-rows-container">
+                ${zonesHtml}
+            </div>
+        </div>
+
+        <div class="prep-staff-notes-box">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.45rem;">
+                <label for="prep-staff-notes-input" style="font-weight:700; font-size:0.9rem; color:#0f172a; display:flex; align-items:center; gap:0.45rem; margin:0;">
+                    <i class="fa-solid fa-bullhorn" style="color:#0284c7;"></i> หมายเหตุจากผู้จัดเตรียม (แจ้งไปยังห้องผ่าตัด / เครื่องมือขาดเหลือ):
+                </label>
+                <span style="font-size:0.75rem; color:#64748b;">(บันทึกและส่งแจ้งเตือนทันที)</span>
+            </div>
+            <textarea id="prep-staff-notes-input" 
+                      rows="2" 
+                      placeholder="พิมพ์แจ้งห้องผ่าตัด เช่น 'ที่จับโคมไฟ R2 ขาด กำลังส่งนึ่ง ให้ใช้ R1 แทน', 'จัดครบทุกรายการ'..." 
+                      oninput="updatePrepStaffNotes('${record.id}', this.value)"
+                      style="width:100%; font-family:var(--font-main); font-size:0.88rem; padding:0.6rem 0.75rem; border-radius:6px; border:1px solid #94a3b8; background:#ffffff; resize:vertical; box-sizing:border-box;">${escapeHtml(record.prepNotes || '')}</textarea>
+        </div>
+
+        <div class="print-signatures-footer" style="display:grid; grid-template-columns:repeat(2, 1fr); gap:2rem; margin-top:2.5rem; padding-top:1rem; border-top:1px dashed #cbd5e1; text-align:center;">
             <div>
-                <p>_________________________</p>
-                <p>ผู้จัดเตรียม (ผู้จ่าย)</p>
+                <div style="border-bottom:1px dotted #64748b; height:32px; margin-bottom:4px;"></div>
+                <p style="margin:0; font-weight:600; font-size:0.85rem;">(......................................................)</p>
+                <p style="margin:3px 0 0 0; font-size:0.78rem; color:#64748b;">ผู้จัดเตรียม & จ่ายอุปกรณ์ (ห้อง Prep)</p>
             </div>
             <div>
-                <p>_________________________</p>
-                <p>ผู้รับอุปกรณ์ (ผู้เบิก)</p>
+                <div style="border-bottom:1px dotted #64748b; height:32px; margin-bottom:4px;"></div>
+                <p style="margin:0; font-weight:600; font-size:0.85rem;">(......................................................)</p>
+                <p style="margin:3px 0 0 0; font-size:0.78rem; color:#64748b;">ผู้รับมอบอุปกรณ์ (พยาบาลห้องผ่าตัด)</p>
             </div>
         </div>
     `;
+
+    // Update button text and state depending on status
+    const btnMarkReady = document.getElementById('btn-mark-ready-modal');
+    if (btnMarkReady) {
+        if (record.status === 'ready') {
+            btnMarkReady.innerHTML = '<i class="fa-solid fa-check-double"></i> จัดเสร็จแล้ว (บันทึกซ้ำ)';
+            btnMarkReady.style.background = 'linear-gradient(135deg, #059669 0%, #047857 100%)';
+        } else {
+            btnMarkReady.innerHTML = '<i class="fa-solid fa-circle-check"></i> จัดเตรียมเสร็จแล้ว (พร้อมรับ)';
+            btnMarkReady.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+        }
+    }
     
     document.getElementById('checklist-print-modal').style.display = 'flex';
+}
+
+function updatePrepStaffNotes(recordId, value) {
+    const record = borrowRecords.find(r => r.id === recordId);
+    if (!record) return;
+    record.prepNotes = value;
+    saveRecordsToStorage();
+}
+
+function togglePrepCheckItem(recordId, index) {
+    const record = borrowRecords.find(r => r.id === recordId);
+    if (!record) return;
+
+    record.prepCheckedIndices = record.prepCheckedIndices || [];
+    const pos = record.prepCheckedIndices.indexOf(index);
+    if (pos > -1) {
+        record.prepCheckedIndices.splice(pos, 1);
+    } else {
+        record.prepCheckedIndices.push(index);
+    }
+
+    saveRecordsToStorage();
+    printBorrowDocument(recordId);
+}
+
+function markCurrentRecordAsReady() {
+    if (!currentPrintRecordId) return;
+    const record = borrowRecords.find(r => r.id === currentPrintRecordId);
+    if (!record) return;
+
+    record.status = 'ready';
+    record.readyAt = new Date().toISOString();
+    
+    // Automatically tick all items if not yet ticked
+    const eqList = record.equipmentList || record.instruments || [];
+    record.prepCheckedIndices = eqList.map((_, i) => i);
+
+    saveRecordsToStorage();
+    renderBorrowTable();
+    updateStatistics();
+    
+    showToast(`รายการของ ${record.orRoom} (${record.borrowerName}) เปลี่ยนสถานะเป็น "จัดเสร็จแล้ว (พร้อมรับ)" เรียบร้อยแล้ว!`, 'success');
+    
+    // Re-render modal to reflect ready status
+    printBorrowDocument(currentPrintRecordId);
 }
 
 function closeChecklistModal() {
@@ -981,5 +1182,21 @@ function resetToInitialSampleData() {
         } else {
             alert('การยืนยันไม่ถูกต้อง ยกเลิกการล้างข้อมูล');
         }
+    }
+}
+
+function openLogoLightbox() {
+    const modal = document.getElementById('logo-lightbox-modal');
+    if (modal) {
+        modal.style.display = 'flex';
+        modal.classList.add('open');
+    }
+}
+
+function closeLogoLightbox() {
+    const modal = document.getElementById('logo-lightbox-modal');
+    if (modal) {
+        modal.style.display = 'none';
+        modal.classList.remove('open');
     }
 }
